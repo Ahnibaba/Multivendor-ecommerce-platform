@@ -18,14 +18,20 @@ const transporter = nodemailer.createTransport({
 
 // Render an EJS email template
 const renderEmailTemplate = async(templateName: string, data: Record<string, any>): Promise<string> => {
-   const templatePath = path.join(
-     process.cwd(),
-     "auth-service",
-     "src",
-     "utils",
-     "email-templates",
-     `${templateName}.ejs`
-   )
+//   const templatePath = path.join(
+//   __dirname,
+//   "../email-templates/user-activation-mail.ejs"
+// );
+
+const templatePath = path.join(
+  process.cwd(),
+  "apps",
+  "auth-service",
+  "src",
+  "utils",
+  "email-templates",
+  `${templateName}.ejs`
+)
 
    return ejs.renderFile(templatePath, data)
 }
@@ -48,3 +54,29 @@ export const sendEmail = async(to: string, subject: string, templateName: string
    } 
 }
 
+
+
+// {
+//   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+//   "sourceRoot": "apps/auth-service/src",
+//   "projectType": "application",
+//   "targets": {
+//     "build": {
+//       "executor": "@nx/esbuild:esbuild",
+//       "outputs": ["{options.outputPath}"],
+//       "options": {
+//         "outputPath": "dist",
+//         "main": "apps/auth-service/src/main.ts",
+//         "tsConfig": "apps/auth-service/tsconfig.app.json",
+//         "assets": [
+//           {
+//             "glob": "**/*.ejs",
+//             "input": "apps/auth-service/src/utils/email-templates",
+//             "output": "apps/auth-service/src/utils/email-templates"
+//           }
+//         ]
+//       }
+//     }
+//   },
+//   "tags": []
+// }
