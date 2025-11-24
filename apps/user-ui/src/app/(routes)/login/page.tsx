@@ -29,7 +29,7 @@ const Login= () => {
   const loginMutation = useMutation({
     mutationFn: async (data: FormData) => {
       const response = await axios.post(
-       `${process.env.NEXT_PUBLIC_SERVER_URI}/api/login`,
+       `${process.env.NEXT_PUBLIC_SERVER_URI}/api/login-user`,
         data,
         { withCredentials: true }
       )
@@ -151,6 +151,9 @@ const Login= () => {
               >
                  {loginMutation.isPending ? "Logging in..." : "Login"}
               </button>
+               {serverError && (
+                  <p className="text-red-500 text-sm mt-2">{serverError}</p>
+               )}
           </form>
         </div>
       </div>
