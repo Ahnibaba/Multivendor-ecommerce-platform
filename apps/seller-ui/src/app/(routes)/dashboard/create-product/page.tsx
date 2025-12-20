@@ -225,6 +225,10 @@ const Page = () => {
               <div className="mt-2">
                 <CustomSpecifications control={control} errors={errors} />
               </div>
+
+              <div className="mt-2">
+                <CustomProperties control={control} errors={errors} />
+              </div>
             </div>
           </div>
         </div>
