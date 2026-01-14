@@ -7,7 +7,7 @@
       "executor": "@nx/esbuild:esbuild",
       "outputs": ["{options.outputPath}"],
       "options": {
-        "outputPath": "dist",
+        "outputPath": "dist/apps/auth-service",
         "main": "apps/auth-service/src/main.ts",
         "tsConfig": "apps/auth-service/tsconfig.app.json",
         "assets": [
@@ -17,6 +17,15 @@
             "output": "apps/auth-service/src"
           }
         ]
+      }
+    },
+
+    "serve": {
+      "executor": "@nx/js:node",
+      "options": {
+        "buildTarget": "auth-service:build",
+        "inspect": false,
+        "watch": true
       }
     }
   },

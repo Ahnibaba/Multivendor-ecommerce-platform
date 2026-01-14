@@ -4,7 +4,16 @@ import Image from 'next/image';
 import React, { useState } from 'react'
 
 const ImagePlaceHolder = ({
-  size, small, onImageChange, onRemove, defaultImage = null, index = null, setOpenImageModal
+  size,
+  small,
+  onImageChange,
+  onRemove,
+  defaultImage = null,
+  index = null,
+  setOpenImageModal,
+  setSelectedImage,
+  images,
+  pictureUploadingLoader
 }: {
   size: string;
   small?: boolean;
@@ -13,6 +22,9 @@ const ImagePlaceHolder = ({
   defaultImage?: string | null;
   setOpenImageModal: (openImageModal: boolean) => void
   index?: any;
+  setSelectedImage: (e: string) => void;
+  images: any;
+  pictureUploadingLoader: boolean;
 }) => {
   const [imagePreview, setImagePreview] = useState<string | null>(defaultImage)
 
@@ -23,6 +35,10 @@ const ImagePlaceHolder = ({
       onImageChange(file, index!);
     }
   }
+
+  console.log(images);
+  
+  
   return (
     <div
       className={`relative ${small ? "h-[180px]" : "h-[450px]"} 
@@ -40,14 +56,22 @@ const ImagePlaceHolder = ({
         <>
           <button
             type="button"
-            onClick={() => onRemove?.(index!)}
-            className="absolute top-3 right-3 p-2 !rounded bg-red-600 shadow-lg"
+            disabled={pictureUploadingLoader}
+            onClick={() => {
+              onRemove?.(index!)
+              setImagePreview(null)
+            }}
+            className={`absolute top-3 right-3 p-2 !rounded bg-red-600 shadow-lg ${pictureUploadingLoader && "cursor-not-allowed bg-red-100"}`}
           >
             <X size={16} />
           </button>
           <button
-            className="absolute top-3 right-[70px] p-2 !rounded bg-blue-500 shadow-lg cursor-pointer"
-            onClick={() => setOpenImageModal(true)}
+            disabled={pictureUploadingLoader}
+            className={`absolute top-3 right-[70px] p-2 !rounded bg-blue-500 shadow-lg cursor-pointer ${pictureUploadingLoader && "cursor-not-allowed bg-blue-100"}`}
+            onClick={() => {
+              setOpenImageModal(true)
+              setSelectedImage(images[index].file_url)
+            }}
           >
             <WandSparkles size={16} />
           </button>

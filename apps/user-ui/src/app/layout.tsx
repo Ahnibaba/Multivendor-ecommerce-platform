@@ -1,7 +1,7 @@
 import './global.css';
 import Providers from './providers';
 import Header from './shared/widgets/header';
-import { Poppins, Roboto } from "next/font/google"
+import { Poppins, Roboto, Oregano } from "next/font/google"
 
 export const metadata = {
   title: 'Eshop',
@@ -18,6 +18,11 @@ const poppins = Poppins({
   weight: ["100", "200", "300", "400", "500", "600", "700", "800", "900"],
   variable: "--font-poppins"
 })
+const oregano = Oregano({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-oregano"
+})
 export default function RootLayout({
   children,
 }: {
@@ -25,7 +30,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${roboto.variable} ${poppins.variable}`}>
+      <body className={`${roboto.variable} ${poppins.variable} ${oregano.variable}`}>
         <Providers>
           <Header />
           {children}
