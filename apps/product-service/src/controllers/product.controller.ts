@@ -168,7 +168,7 @@ export const createProduct = async (
       category,
       colors = [],
       sizes = [],
-      discountCodes,
+      discountCodes = [],
       stock,
       sale_price,
       regular_price,
@@ -178,6 +178,8 @@ export const createProduct = async (
       starting_date,
       ending_date
     } = req.body
+
+
 
     if (
       !title ||
@@ -226,7 +228,10 @@ export const createProduct = async (
         category,
         subCategory,
         colors: colors || [],
-        discount_codes: discountCodes.map((codeId: string) => codeId),
+        discount_codes: Array.isArray(discountCodes)
+          ? discountCodes
+          : [],
+
         sizes: sizes || [],
         stock: parseInt(stock),
         sale_price: parseFloat(sale_price),
@@ -258,6 +263,8 @@ export const createProduct = async (
     })
 
   } catch (error) {
+    console.log("Error in createProductFunction", error);
+
     next(error)
   }
 }
@@ -386,9 +393,9 @@ export const getStripeAccount = async () => {
 
 
 // get All products
-export const getAllProduct = async (req: Request, res: Response, next:NextFunction) => {
+export const getAllProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    console.log("Done and no errorHello");
+    
     const page = parseInt(req.query.page as string) || 1
     const limit = parseInt(req.query.limit as string) || 20
     const skip = (page - 1) * limit
@@ -396,12 +403,12 @@ export const getAllProduct = async (req: Request, res: Response, next:NextFuncti
 
     const baseFilter = {
       OR: [
-      {
-        starting_date: null,
-      },
-      {
-        ending_date: null
-      }
+        {
+          starting_date: null,
+        },
+        {
+          ending_date: null
+        }
       ]
     }
 
@@ -411,37 +418,37 @@ export const getAllProduct = async (req: Request, res: Response, next:NextFuncti
         : { totalSales: "desc" as Prisma.SortOrder }
 
     const [products, total, top10Products] = await Promise.all([
-       prisma.products.findMany({
-         skip,
-         take: limit,
-         include: {
-           images: true,
-           shops: true
-         },
-         where: baseFilter,
-         orderBy: {
-           totalSales: "desc"
-         }
-       }),
+      prisma.products.findMany({
+        skip,
+        take: limit,
+        include: {
+          images: true,
+          shops: true
+        },
+        where: baseFilter,
+        orderBy: {
+          totalSales: "desc"
+        }
+      }),
 
-       prisma.products.count({ where: baseFilter }),
-       prisma.products.findMany({
-         take: 10,
-         where: baseFilter,
-         orderBy
-       })
+      prisma.products.count({ where: baseFilter }),
+      prisma.products.findMany({
+        take: 10,
+        where: baseFilter,
+        orderBy
+      })
 
-    ]) 
+    ])
 
     // const products = await prisma.products.findMany({
     //   include: { images: true }
     // })
     console.log("Products", products);
-    
-    
-    
+
+
+
     res.status(200).json({
-       products,
+      products,
       //  top10By: type === "latest" ? "latest" : "topSales",
       //  top10Products,
       //  total,

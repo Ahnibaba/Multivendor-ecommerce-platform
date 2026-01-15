@@ -20,15 +20,72 @@ interface UploadedImage {
   fileId: string;
   file_url: string;
 }
+
+
+interface UploadedImage {
+  fileId: string
+  file_url: string
+}
+
+export interface CreateProductFormValues {
+  // Basic product info
+  title: string
+  short_description: string
+  detailed_description: string
+  slug: string
+  brand?: string
+  warranty: string
+  tags: string
+
+  // Category
+  category: string
+  subCategory: string
+
+  // Pricing & stock
+  regular_price: number
+  sale_price: number
+  stock: number
+
+  // Optional media
+  video_url?: string
+
+  // Flags
+  cash_on_delivery: "yes" | "no"
+
+  // Arrays & complex fields
+  colors?: string[]
+  sizes?: string[]
+
+  images: (UploadedImage | null)[]
+  discountCodes: string[]
+
+  // Custom fields
+  custom_specifications?: Record<string, any>
+  customProperties?: Record<string, any>
+
+  // Optional dates (if you add them later)
+  starting_date?: string | null
+  ending_date?: string | null
+}
+
+
+
 const Page = () => {
   const {
-    register,
-    control,
-    watch,
-    setValue,
-    handleSubmit,
-    formState: { errors }
-  } = useForm()
+  register,
+  control,
+  watch,
+  setValue,
+  handleSubmit,
+  formState: { errors }
+} = useForm<CreateProductFormValues>({
+  defaultValues: {
+    discountCodes: [],
+    images: [null],
+    cash_on_delivery: "yes"
+  }
+})
+
 
   const [openImageModal, setOpenImageModal] = useState(false)
   const [isChanged, setIsChanged] = useState(true)
@@ -271,9 +328,9 @@ const Page = () => {
                     }
                   })}
                 />
-                {errors.description && (
+                {errors.short_description && (
                   <p className="text-red-500 text-xs mt-1">
-                    {errors.description.message as string}
+                    {errors.short_description.message as string}
                   </p>
                 )}
               </div>
@@ -461,9 +518,9 @@ const Page = () => {
                     </select>
                   )}
                 />
-                {errors.subcategory && (
+                {errors.subCategory && (
                   <p className="text-red-500 text-sm mt-1">
-                    {errors.subcategory.message as string}
+                    {errors.subCategory.message as string}
                   </p>
                 )}
               </div>

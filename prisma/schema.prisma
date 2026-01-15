@@ -54,7 +54,8 @@ model shops {
   name           String
   bio            String?
   category       String
-  avatar         images[]
+  avatar         String[]
+  images         images[]
   coverBanner    String?
   address        String
   opening_hours  String?
