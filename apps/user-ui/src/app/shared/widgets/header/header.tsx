@@ -1,16 +1,39 @@
 "use client"
 import Link from 'next/link'
-import React from 'react'
+import React, { useState } from 'react'
 import { Search } from "lucide-react"
 import ProfileIcon from '@/assets/svgs/profile-icon'
 import HeartIcon from '@/assets/svgs/heart-icon'
 import CartIcon from '@/assets/svgs/cart-icon'
 import HeaderBottom from './header-bottom'
 import useUser from '@/hooks/useUser'
+import axiosInstance from '@/utils/axiosInstance'
+import { useStore } from '@/store'
 
 const Header = () => {
   const { user, isLoading } = useUser()
 
+  const wishlist = useStore((state) => state.wishlist)
+  const cart = useStore((state) => state.cart)
+
+  const [searchQuery, setSearchQuery] = useState("")
+  const [suggestions, setSuggestions] = useState<any[]>([])
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false)
+
+
+  const handleSearchClick = async () => {
+     if (!searchQuery.trim()) return
+     setLoadingSuggestions(true)
+     try {
+       const res = await axiosInstance.get(
+         `/product/api/search-products?q=${encodeURIComponent(searchQuery)}`
+       )
+       setSuggestions(res.data.products.slice(0, 10))
+     } catch (error) {
+       console.log(error);
+       
+     }
+  }
 
   return (
     <div className='w-full bg-white'>
@@ -69,7 +92,7 @@ const Header = () => {
               <HeartIcon />
               <div className="w-6 h-6 border-2 border-white bg-red-500 rounded-full flex items-center justify-center absolute top-[-10px] right-[-10px]">
                 <span className="text-white font-medium text-sm">
-                  0
+                  {wishlist?.length}
                 </span>
               </div>
             </Link>
@@ -80,7 +103,7 @@ const Header = () => {
               <CartIcon />
               <div className="w-6 h-6 border-2 border-white bg-red-500 rounded-full flex items-center justify-center absolute top-[-10px] right-[-10px]">
                 <span className="text-white font-medium text-sm">
-                  0
+                  {cart?.length}
                 </span>
               </div>
             </Link>

@@ -4,6 +4,9 @@ import HeartIcon from '@/assets/svgs/heart-icon'
 import ProfileIcon from '@/assets/svgs/profile-icon'
 import { navItems } from '@/configs/constants'
 import useUser from '@/hooks/useUser'
+import { useStore } from '@/store'
+import axiosInstance from '@/utils/axiosInstance'
+import { useQuery } from '@tanstack/react-query'
 import { AlignLeft, ChevronDown } from 'lucide-react'
 import Link from 'next/link'
 import React, { useEffect, useState } from 'react'
@@ -11,10 +14,27 @@ import React, { useEffect, useState } from 'react'
 const HeaderBottom = () => {
   const [show, setShow] = useState(false)
   const [isSticky, setIsSticky] = useState(false)
+  const [expandedCategory, setExpandedCategory] = useState<string | null>("")
+
+
+  const wishlist = useStore((state) => state.wishlist)
+  const cart = useStore((state) => state.cart)
+
   const { user, isLoading } = useUser()
 
-  console.log(user);
+  const  { data } = useQuery({
+    queryKey: ["categories"],
+    queryFn: async () => {
+      const res = await axiosInstance.get("/product/api/get-categories")
+      return res.data
+    }, 
+    staleTime: 1000 * 60 * 30
+  })
+
+  console.log("Welcome back", data);
   
+  
+
 
   // Track scroll position
   useEffect(() => {
@@ -105,7 +125,7 @@ const HeaderBottom = () => {
               <HeartIcon />
               <div className="w-6 h-6 border-2 border-white bg-red-500 rounded-full flex items-center justify-center absolute top-[-10px] right-[-10px]">
                 <span className="text-white font-medium text-sm">
-                  0
+                  {wishlist?.length}
                 </span>
               </div>
             </Link>
@@ -116,7 +136,7 @@ const HeaderBottom = () => {
               <CartIcon />
               <div className="w-6 h-6 border-2 border-white bg-red-500 rounded-full flex items-center justify-center absolute top-[-10px] right-[-10px]">
                 <span className="text-white font-medium text-sm">
-                  0
+                  {cart?.length}
                 </span>
               </div>
             </Link>
