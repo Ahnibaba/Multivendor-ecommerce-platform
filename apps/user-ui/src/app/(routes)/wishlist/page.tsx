@@ -78,7 +78,7 @@ const WishlistPage = () => {
                          <th className="py-3 px-2 text-left">Price</th>
                          <th className="py-3 px-2 text-left">Quantity</th>
                          <th className="py-3 px-2 text-left">Action</th>
-                         <th className="py-3 px-2 text-left">Action</th>
+                         <th className="py-3 px-2 text-left"></th>
                        </tr>
                     </thead>
                     <tbody>

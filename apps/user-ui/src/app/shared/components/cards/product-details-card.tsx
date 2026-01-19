@@ -142,7 +142,7 @@ const ProductDetailsCard = ({ data, setOpen }: { data: any, setOpen: (open: bool
              )} 
 
              {/* Color & Size Selection */}
-             <div className="flex flex-col md:flex-row items-start gap-5 mt-4">
+             <div className="flex flex-col items-start gap-5 mt-4">
                 {/* Color Options */}
                 {data?.colors?.length > 0 && (
                    <div className="">
@@ -151,9 +151,9 @@ const ProductDetailsCard = ({ data, setOpen }: { data: any, setOpen: (open: bool
                        {data.colors.map((color: string, index: number) => (
                          <button
                            key={index}
-                           className={`w-8 h-8 cursor-pointer rounded-full border-2 transition ${
+                           className={`w-8 h-8 cursor-pointer rounded-full border-2 border-black/20 transition ${
                              isSelected === color
-                               ? "border-gray-400 scale-110 shadow-md"
+                               ? "border-gray-800 scale-110 shadow-md"
                                : "border-transparent"
                            }`}
                            onClick={() => setIsSelected(color)}
