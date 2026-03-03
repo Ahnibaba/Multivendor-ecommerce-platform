@@ -32,7 +32,10 @@ model users {
   password  String?
   following String[]
   avatar    images[]
+  orders    orders[]
   reviews   shopReviews[]
+  userAnalytics userAnalytics?
+  followedShops ShopFollower[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -56,6 +59,7 @@ model shops {
   category       String
   avatar         String[]
   images         images[]
+  orders         orders[]
   coverBanner    String?
   address        String
   opening_hours  String?
@@ -66,6 +70,8 @@ model shops {
   products       products[]
   sellerId       String  @unique  @db.ObjectId
   sellers        sellers @relation(fields: [sellerId], references: [id])
+  productAnalytics ProductAnalytics[]
+  followers      ShopFollower[]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 }
@@ -123,6 +129,7 @@ model products {
   brand                String?
   colors               String[]
   sizes                String[]
+  orderItems           OrderItem[]
   starting_date        DateTime?
   ending_date          DateTime?
   stock                Int
@@ -142,4 +149,104 @@ model products {
   shopId               String            @db.ObjectId
   shops                shops?            @relation(fields: [shopId], references: [id])
   totalSales           Int               @default(0)
+  productAnalytics     ProductAnalytics?
+}
+
+type UserActions {
+  productId      String
+  shopId         String
+  action         String
+  timestamp      DateTime
+}
+
+model userAnalytics {
+   id                   String   @id  @default(auto()) @map("_id") @db.ObjectId
+   userId               String   @db.ObjectId @unique
+   lastVisited          DateTime
+   actions              UserActions[]
+   country              String?
+   city                 String?
+   device               String?
+   users                users        @relation(fields: [userId], references: [id])
+}
+
+model ProductAnalytics {
+   id                   String   @id  @default(auto()) @map("_id") @db.ObjectId
+   productId            String   @db.ObjectId @unique
+   shopId               String   @db.ObjectId 
+   views                Int
+   cartAdds              Int
+   wishListsAdds        Int
+   purchases            Int
+   lastviewedAt         DateTime
+   products           products     @relation(fields: [productId], references: [id])
+   shops     shops        @relation(fields: [shopId], references: [id])
+}
+
+model ShopFollower {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  shopId    String    @db.ObjectId
+  userId    String    @db.ObjectId
+  createdAt DateTime  @default(now())
+
+  shop      shops     @relation(fields: [shopId], references: [id])
+  user      users     @relation(fields: [userId], references: [id])
+
+  @@unique([shopId, userId])
+}
+
+
+
+
+
+model orders {
+  id              String        @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String        @db.ObjectId
+  shopId          String        @db.ObjectId
+  total           Float
+  subtotal        Float
+  discount        Float?        @default(0)
+  deliveryCharge  Float?        @default(0)
+  status          OrderStatus   @default(Pending)
+  paymentStatus   PaymentStatus @default(Pending)
+  paymentMethod   String?
+  paymentIntentId String?       // stripe payment intent id
+  shippingAddress Json
+  items           OrderItem[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  user            users         @relation(fields: [userId], references: [id])
+  shop            shops         @relation(fields: [shopId], references: [id])
+}
+
+model OrderItem {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  orderId     String   @db.ObjectId
+  productId   String   @db.ObjectId
+  title       String
+  image       String
+  price       Float
+  quantity    Int
+  color       String?
+  size        String?
+
+  order       orders   @relation(fields: [orderId], references: [id])
+  product     products @relation(fields: [productId], references: [id])
+}
+
+enum OrderStatus {
+  Pending
+  Processing
+  Shipped
+  Delivered
+  Cancelled
+  Refunded
+}
+
+enum PaymentStatus {
+  Pending
+  Paid
+  Failed
+  Refunded
 }

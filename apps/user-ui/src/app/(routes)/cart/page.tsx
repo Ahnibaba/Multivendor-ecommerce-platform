@@ -39,7 +39,7 @@ const CartPage = () => {
 
     const increaseQuantity = (id: string) => {
         useStore.setState((state: any) => ({
-            wishlist: state.wishlist.map((item: any) =>
+            cart: state.cart.map((item: any) =>
                 item.id === id
                     ? { ...item, quantity: (item.quantity ?? 1) + 1 }
                     : item

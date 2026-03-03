@@ -1,5 +1,6 @@
 import './global.css';
 import Providers from './providers';
+import Footer from './shared/widgets/footer';
 import Header from './shared/widgets/header';
 import { Poppins, Roboto, Oregano, Jost } from "next/font/google"
 
@@ -40,6 +41,7 @@ export default function RootLayout({
           <Header />
           {children}
         </Providers>
+        <Footer />
       </body>
     </html>
   )

@@ -45,7 +45,7 @@ axiosInstance.interceptors.response.use(
           subscribeTokenRefresh(() => resolve(axiosInstance(originalRequest)))
         })
       }
-      originalRequest.retry = true
+      originalRequest._retry = true
       isRefreshing = true
       try {
         await axios.post(

@@ -1,5 +1,5 @@
 import express, { Router } from "express"
-import { createDiscountCodes, createProduct, deleteDiscountCode, deleteProduct, deleteProductImage, getAllProduct, getCategories, getDiscountCodes, getShopProducts, getStripeAccount, restoreProduct, uploadProductImage } from "../controllers/product.controller"
+import { createDiscountCodes, createProduct, deleteDiscountCode, deleteProduct, deleteProductImage, getAllEvents, getAllProduct, getCategories, getDiscountCodes, getFilteredEvents, getFilteredProducts, getFilteredShops, getProductDetails, getShopProducts, getStripeAccount, restoreProduct, searchProducts, topShops, uploadProductImage } from "../controllers/product.controller"
 import isAuthenticated from "../../../../packages/middleware/isAuthenticated"
 import { isSeller } from "../../../../packages/middleware/authorizeRoles"
 
@@ -18,5 +18,12 @@ router.delete("/delete-product/:productId", isAuthenticated, deleteProduct)
 router.put("/restore-product/:productId", isAuthenticated, restoreProduct)
 router.get("/get-stripe-account", isAuthenticated, isSeller, getStripeAccount)
 router.get("/get-all-products", getAllProduct)
+router.get("/get-all-events", getAllEvents)
+router.get("/get-product/:slug", getProductDetails)
+router.get("/get-filtered-products", getFilteredProducts)
+router.get("/get-filtered-offers", getFilteredEvents)
+router.get("/get-filtered-shops", getFilteredShops)
+router.get("/search-products", searchProducts)
+router.get("/top-shops", topShops)
 
 export default router
