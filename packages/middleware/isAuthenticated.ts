@@ -4,6 +4,9 @@ import prisma from "../libs/prisma";
 
 const isAuthenticated = async (req: any, res: Response, next: NextFunction) => {
   try {
+
+    console.log("COOKIES", req.cookies)
+
     const token =
       req.cookies["access_token"] || 
       req.cookies["seller-access-token"] ||
@@ -12,6 +15,7 @@ const isAuthenticated = async (req: any, res: Response, next: NextFunction) => {
     if (!token) {
       return res.status(401).json({ message: "Unauthorized! Token missing." })
     }
+
 
     // verify token
     const decoded = jwt.verify(
@@ -31,13 +35,18 @@ const isAuthenticated = async (req: any, res: Response, next: NextFunction) => {
 
     if (decoded.role === "user") {
       account = await prisma.users.findUnique({
-        where: { id: decoded.id }
+        where: { id: decoded.id },
+        include: {
+          avatar: true
+        }
       })
       req.user = account
     } else {
       account = await prisma.sellers.findUnique({
         where: { id: decoded.id },
-        include: { shop: true }
+        include: {
+           shop: true
+        }
       })
       req.seller = account
     }
@@ -51,6 +60,8 @@ const isAuthenticated = async (req: any, res: Response, next: NextFunction) => {
 
     return next()
   } catch (error) {
+    console.log("THEERROR", error);
+    
     return res.status(401).json({
       message: "Unauthorized! Token expired or invalid"
     })  

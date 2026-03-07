@@ -22,22 +22,28 @@ model images {
   products  products?     @relation(fields: [productsId], references: [id])
 }
 
+type userAvatar {
+   file_id   String
+   url       String
+}
 
 
 
 model users {
-  id        String @id @default(auto()) @map("_id") @db.ObjectId
-  name      String
-  email     String @unique
-  password  String?
-  following String[]
-  avatar    images[]
-  orders    orders[]
-  reviews   shopReviews[]
-  userAnalytics userAnalytics?
-  followedShops ShopFollower[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                String @id @default(auto()) @map("_id") @db.ObjectId
+  name              String
+  email             String @unique
+  password          String?
+  following         String[]
+  avatar            images[]
+  orders            orders[]
+  reviews           shopReviews[]
+  userAnalytics     userAnalytics?
+  followedShops     ShopFollower[]
+  address           address[]
+  transactions      transaction[]     
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 }
 
 model shopReviews {
@@ -68,6 +74,7 @@ model shops {
   ratings        Float  @default(0)
   reviews        shopReviews[]
   products       products[]
+  subAccount     flutterwaveSubAccount?
   sellerId       String  @unique  @db.ObjectId
   sellers        sellers @relation(fields: [sellerId], references: [id])
   productAnalytics ProductAnalytics[]
@@ -78,17 +85,18 @@ model shops {
 
 
 model sellers {
-   id            String  @id   @default(auto()) @map("_id") @db.ObjectId
-   name          String
-   email         String @unique
-   phone_number  String
-   country       String
-   password      String
-   stripeId      String?
-   shop          shops?
-   createdAt     DateTime @default(now())
-   updatedAt     DateTime @updatedAt
-   shopId        String?  @db.ObjectId
+   id               String  @id   @default(auto()) @map("_id") @db.ObjectId
+   name             String
+   email            String @unique
+   phone_number     String
+   country          String
+   password         String
+   flutterwaveId    String?
+   subAccount       flutterwaveSubAccount?
+   shop             shops?
+   createdAt        DateTime @default(now())
+   updatedAt        DateTime @updatedAt
+   shopId           String?  @db.ObjectId
 }
 
 model site_config {
@@ -249,4 +257,70 @@ enum PaymentStatus {
   Paid
   Failed
   Refunded
+}
+
+model address {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  label     String
+  name      String
+  street    String
+  city      String
+  zip       String
+  country   String
+  isDefault Boolean  @default(false)
+  user      users    @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
+model flutterwaveSubAccount {
+  id                     String   @id @default(auto()) @map("_id") @db.ObjectId
+  sellerId               String   @db.ObjectId  @unique
+  shopId                 String   @db.ObjectId  @unique
+  account_bank           String
+  account_number         String
+  business_name          String
+  country                String
+  currency               String
+  split_value            Float
+  split_type             String
+  business_mobile        String
+  business_email         String
+  business_contact       String
+  business_contact_mobile String
+  subaccount_id         String?  // returned by Flutterwave after creation
+  seller                 sellers  @relation(fields: [sellerId], references: [id])
+  shop                   shops    @relation(fields: [shopId], references: [id])
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}
+
+enum TransactionStatus {
+  PENDING
+  INITIATED
+  SUCCESS
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+model transaction {
+  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
+  event                 String?
+  transactionId         String?   @unique
+  sessionId             String?   @unique    
+  userId                String
+  user                  users    @relation(fields: [userId], references: [id])
+  sellerSubaccountId    String?
+  amount                Float
+  payment_type          String?
+  currency              String
+  status                TransactionStatus @default(PENDING)
+  paymentMethod         String?
+  verified              Boolean  @default(false)
+  metadata              Json?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 }

@@ -1,15 +1,11 @@
 import { NextFunction, Request, Response } from "express"
 import prisma from "../../../../packages/libs/prisma"
-import { AuthError, ValidationError } from "../../../../packages/error-handler"
+import { AuthError, NotFoundError, ValidationError } from "../../../../packages/error-handler"
 import { checkOtpRestrictions, handleForgotPassword, sendOtp, trackOtpRequests, validatedRegistrationData, verifyForgotPasswordOtp, verifyOtp } from "../utils/auth.helper"
 import bcrypt from "bcryptjs"
 import jwt, { JsonWebTokenError } from "jsonwebtoken"
 import { setCookie } from "../utils/cookies/setCookies"
-import Stripe from "stripe"
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-12-15.clover"
-})
 
 // Register a new user
 export const userRegistration = async (req: Request, res: Response, next: NextFunction) => {
@@ -86,7 +82,7 @@ export const loginUser = async(req: Request, res: Response, next: NextFunction) 
     }
 
     const user = await prisma.users.findUnique({
-      where: { email }
+      where: { email },
     })
 
     if(!user) {
@@ -123,6 +119,7 @@ export const loginUser = async(req: Request, res: Response, next: NextFunction) 
     res.status(200).json({
       message: "Login successful!",
       user: { id: user.id, email: user.email, name: user.name },
+      
     })
   } catch (error) {
     return next(error)
@@ -362,52 +359,52 @@ export const createShop = async(req: Request, res: Response, next: NextFunction)
 }
 
 // create stripe connect account link
-export const createStripeConnectLink = async(req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { sellerId } = req.body
+// export const createStripeConnectLink = async(req: Request, res: Response, next: NextFunction) => {
+//   try {
+//     const { sellerId } = req.body
 
-    if (!sellerId) {
-      return next(new ValidationError("Seller ID is required"))
-    }
-    const seller = await prisma.sellers.findUnique({
-      where: {
-        id: sellerId
-      }
-    })
+//     if (!sellerId) {
+//       return next(new ValidationError("Seller ID is required"))
+//     }
+//     const seller = await prisma.sellers.findUnique({
+//       where: {
+//         id: sellerId
+//       }
+//     })
 
-    if (!seller) {
-      return next(new ValidationError("Seller is not available with this id!"))
-    }
+//     if (!seller) {
+//       return next(new ValidationError("Seller is not available with this id!"))
+//     }
 
-    const account = await stripe.accounts.create({
-      type: "express",
-      email: seller?.email,
-      country: "GB",
-      capabilities: {
-        card_payments: { requested: true },
-        transfers: { requested: true }
-      }
-    })
+//     const account = await stripe.accounts.create({
+//       type: "express",
+//       email: seller?.email,
+//       country: "GB",
+//       capabilities: {
+//         card_payments: { requested: true },
+//         transfers: { requested: true }
+//       }
+//     })
 
-    await prisma.sellers.update({
-      where: { id: sellerId },
-      data: {
-        stripeId: account.id
-      }
-    })
+//     await prisma.sellers.update({
+//       where: { id: sellerId },
+//       data: {
+//         stripeId: account.id
+//       }
+//     })
 
-    const accountLink = await stripe.accountLinks.create({
-      account: account.id,
-      refresh_url: `http://localhost:3000/success`,
-      return_url: `http://localhost:3000/success`,
-      type: "account_onboarding"
-    })
+//     const accountLink = await stripe.accountLinks.create({
+//       account: account.id,
+//       refresh_url: `http://localhost:3000/success`,
+//       return_url: `http://localhost:3000/success`,
+//       type: "account_onboarding"
+//     })
 
-    res.json({ url: accountLink.url})
-  } catch (error) {
-    return next(error)
-  }
-}
+//     res.json({ url: accountLink.url})
+//   } catch (error) {
+//     return next(error)
+//   }
+// }
 
 
 export const loginSeller = async(req: Request, res: Response, next: NextFunction) => {
@@ -476,4 +473,140 @@ export const getSeller = async(req: Request, res: Response, next: NextFunction) 
 
 export const sample = async(req: Request, res: Response, next: NextFunction) => {
 
+}
+
+
+export const logoutUser = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    res.clearCookie("access_token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "none",
+    })
+
+    res.clearCookie("refresh_token", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "none",
+    })
+
+    res.status(200).json({
+      message: "Logout successful!"
+    })
+  } catch (error) {
+    return next(error)
+  }
+}
+
+
+// add new address
+export const addUserAddress = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const userId = req.user?.id
+    const { label, name, street, city, zip, country, isDefault } = req.body
+
+    if (!label || !name || !street || !city || !zip || !country) {
+      return next(new ValidationError("All fields are required"))
+    }
+
+    if (isDefault) {
+      await prisma.address.updateMany({
+        where: {
+          userId,
+          isDefault: true
+        },
+        data: {
+          isDefault: false
+        }
+      })
+    }
+
+    const newAddress = await prisma.address.create({
+      data: {
+        userId,
+        label,
+        name,
+        street,
+        city,
+        zip,
+        country,
+        isDefault
+      }
+    })
+
+    res.status(201).json({
+       success: true,
+       address: newAddress
+    })
+  } catch (error) {
+    return next(error)
+  }
+}
+
+// delete user address
+export const deleteUserAddress = async(
+   req: any,
+   res: Response,
+   next: NextFunction
+) => {
+  try {
+    const userId = req.user?.id
+    const { addressId } =req.params
+
+    if (!addressId) {
+       return next(new ValidationError("Address ID is required"))
+    }
+
+    const existingAddress = await prisma.address.findFirst({
+       where: {
+         id: addressId,
+         userId,
+       }
+    })
+    if (!existingAddress) {
+       return next(new NotFoundError("Address ID is required"))
+    }
+
+    await prisma.address.delete({
+      where: {
+        id: addressId
+      }
+    })
+
+    res.status(200).json({
+      success: true,
+      message: "Address deleted successfully"
+    })
+  } catch (error) {
+    return next(error)
+  }
+}
+
+// get user addresses
+export const getUserAddresses = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+   try {
+     const userId = req.user?.id
+     const addresses=await prisma.address.findMany({
+       where: {
+        userId,
+       },
+       orderBy: {
+         createdAt: "desc"
+       }
+     })
+     res.status(200).json({
+       success: true,
+       addresses
+     })
+   } catch (error) {
+     next(error)
+   }
 }
