@@ -10,6 +10,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import React, { useEffect, useState } from 'react'
+import toast from 'react-hot-toast'
 
 const CartPage = () => {
     const { user } = useUser()
@@ -22,12 +23,34 @@ const CartPage = () => {
     const [selectedAddressId, setSelectedAddressId] = useState("")
 
     const router = useRouter()
-    const location =   useLocationTracking()
+    const location = useLocationTracking()
     const deviceInfo = useDeviceTracking()
 
     const cart = useStore((state) => state.cart)
     const removeFromCart = useStore((state) => state.removeFromCart)
 
+    const createPaymentSession = async () => {
+        setLoading(true)
+        try {
+            // Step 1 — create session
+            const sessionRes = await axiosInstance.post("/order/api/create-payment-intent", {
+                cart,
+                selectedAddressId,
+                coupon: {}
+            })
+
+            // Step 2 — initialize payment with just sessionId
+            const paymentRes = await axiosInstance.post("/order/api/create-payment-session", {
+                sessionId: sessionRes.data.sessionId  // ✅ just sessionId
+            })
+
+            window.location.href = paymentRes.data.paymentLink
+        } catch (error) {
+            toast.error("Error processing payment")
+        } finally {
+            setLoading(false)
+        }
+    }
 
     const decreaseQuantity = (id: string) => {
         useStore.setState((state: any) => ({
@@ -61,21 +84,21 @@ const CartPage = () => {
 
     // Get address
     const { data: addresses = [] } = useQuery<any[], Error>({
-       queryKey: ["shipping-addresses"],
-       queryFn: async () => {
-         const res = await axiosInstance.get("/api/shipping-addresses")
-         return res.data.addresses
-       }
+        queryKey: ["shipping-addresses"],
+        queryFn: async () => {
+            const res = await axiosInstance.get("/api/shipping-addresses")
+            return res.data.addresses
+        }
     })
 
     useEffect(() => {
-       if (addresses.length > 0 && !selectedAddressId) {
-         const defaultAddr = addresses.find((addr) => addr.isDefault)
+        if (addresses.length > 0 && !selectedAddressId) {
+            const defaultAddr = addresses.find((addr) => addr.isDefault)
 
-         if (defaultAddr) {
-           setSelectedAddressId(defaultAddr.id)
-         }
-       }
+            if (defaultAddr) {
+                setSelectedAddressId(defaultAddr.id)
+            }
+        }
     }, [addresses, selectedAddressId])
 
 
@@ -206,19 +229,19 @@ const CartPage = () => {
 
                         <div className="p-6 shadow-md w-full lg:w-[30%] bg-[#f9f9f9] rounded-lg">
                             {discountAmount > 0 && (
-                               <div className="flex justify-between items-center text-[#010f1c] text-base font-medium pb-1">
-                                 <span className="font-jost">
-                                    Discount ({discountPercent}%)
-                                 </span>
-                                 <span className="text-green-600">
-                                     - ${discountAmount.toFixed(2)}
-                                 </span>
-                               </div>
+                                <div className="flex justify-between items-center text-[#010f1c] text-base font-medium pb-1">
+                                    <span className="font-jost">
+                                        Discount ({discountPercent}%)
+                                    </span>
+                                    <span className="text-green-600">
+                                        - ${discountAmount.toFixed(2)}
+                                    </span>
+                                </div>
                             )}
 
                             <div className="flex justify-between items-center text-[#010fc] text-[20px] font-[550] pb-3">
-                               <span className="font-jost">Subtotal</span>
-                               <span>${(subtotal - discountAmount).toFixed(2)}</span>
+                                <span className="font-jost">Subtotal</span>
+                                <span>${(subtotal - discountAmount).toFixed(2)}</span>
                             </div>
                             <hr className="my-4 text-slate-200" />
 
@@ -228,17 +251,17 @@ const CartPage = () => {
                                 </h4>
                                 <div className="flex">
                                     <input
-                                      type="text"
-                                      value={couponCode}
-                                      onChange={(e: any) => setCouponCode(e.target.value)}
-                                      placeholder="Enter coupon code"
-                                      className="w-full p-2 border border-gray-200 rounded-l-md focus:outline-none focus:border-blue-500"
+                                        type="text"
+                                        value={couponCode}
+                                        onChange={(e: any) => setCouponCode(e.target.value)}
+                                        placeholder="Enter coupon code"
+                                        className="w-full p-2 border border-gray-200 rounded-l-md focus:outline-none focus:border-blue-500"
                                     />
                                     <button
-                                      className="bg-blue-500 cursor-pointer text-white px-4 rounded-r-md hover:bg-blue-600 transition-all"
-                                      //onClick={() => couponCodeapply}
+                                        className="bg-blue-500 cursor-pointer text-white px-4 rounded-r-md hover:bg-blue-600 transition-all"
+                                    //onClick={() => couponCodeapply}
                                     >
-                                      Apply
+                                        Apply
                                     </button>
                                     {/* {error && (
                                        <p className="text-sm pt-2 text-red-500">
@@ -254,31 +277,31 @@ const CartPage = () => {
                                     </h4>
                                     {addresses?.length !== 0 && (
                                         <select
-                                      className="w-full p-2 border border-gray-200 rounded-md focus:outline-none focus:border-blue-500"
-                                      value={selectedAddressId}
-                                      onChange={(e) => setSelectedAddressId(e.target.value)}
-                                    >
-                                      {addresses?.map((address: any) => (
-                                         <option key={address.id} value={address.id}>
-                                            {address.label} - {address.city}, {address.country}
-                                         </option>
-                                      ))}
-                                    </select>
+                                            className="w-full p-2 border border-gray-200 rounded-md focus:outline-none focus:border-blue-500"
+                                            value={selectedAddressId}
+                                            onChange={(e) => setSelectedAddressId(e.target.value)}
+                                        >
+                                            {addresses?.map((address: any) => (
+                                                <option key={address.id} value={address.id}>
+                                                    {address.label} - {address.city}, {address.country}
+                                                </option>
+                                            ))}
+                                        </select>
                                     )}
                                     {addresses?.length === 0 && (
                                         <p className="text-sm text-slate-800">
-                                          Please add an address from profile to create an order
+                                            Please add an address from profile to create an order
                                         </p>
                                     )}
                                 </div>
                                 <hr className="my-4 text-slate-200" />
 
                                 <div className="mb-4">
-                                  <h4 className="mb-[7px] font-[500] text-[15px]">
-                                     Select Payment Method
-                                  </h4>  
-                                  <select
-                                     className="w-full p-2 border border-gray-200 rounded-md"
+                                    <h4 className="mb-[7px] font-[500] text-[15px]">
+                                        Select Payment Method
+                                    </h4>
+                                    <select
+                                        className="w-full p-2 border border-gray-200 rounded-md"
                                     >
                                         <option value="credit_card">Online Payment</option>
                                         <option value="cash_on_delivery">Cash on Delivery</option>
@@ -287,18 +310,19 @@ const CartPage = () => {
                                 <hr className="my-4 text-slate-200" />
 
                                 <div className="flex justify-between items-center text-[#010f1c] text-[20px] font-[550] pb-3">
-                                  <span className="font-jost">Total</span>
-                                  <span>${(subtotal - discountAmount).toFixed(2)}</span>
+                                    <span className="font-jost">Total</span>
+                                    <span>${(subtotal - discountAmount).toFixed(2)}</span>
                                 </div>
 
                                 <button
-                                  disabled={loading}
-                                  className="w-full flex items-center justify-center gap-2 cursor-pointer mt-4 py-3 bg-[#010f1c] text-white hover:bg-[#0989FF] transition-all rounded-lg"
+                                    onClick={createPaymentSession}
+                                    disabled={loading}
+                                    className="w-full flex items-center justify-center gap-2 cursor-pointer mt-4 py-3 bg-[#010f1c] text-white hover:bg-[#0989FF] transition-all rounded-lg"
                                 >
-                                  {loading && <Loader2 className="animate-spin w-5 h-5" />}
-                                  {loading ? "Redirecting..." : "Proceed to Checkout"}
+                                    {loading && <Loader2 className="animate-spin w-5 h-5" />}
+                                    {loading ? "Redirecting..." : "Proceed to Checkout"}
                                 </button>
-                            </div> 
+                            </div>
                         </div>
                     </div>
                 )}

@@ -40,8 +40,9 @@ model users {
   reviews           shopReviews[]
   userAnalytics     userAnalytics?
   followedShops     ShopFollower[]
-  address           address[]
-  transactions      transaction[]     
+  address           ShippingAddress[]
+  transactions      transaction[]   
+  notifications     notifications[]  
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 }
@@ -94,6 +95,7 @@ model sellers {
    flutterwaveId    String?
    subAccount       flutterwaveSubAccount?
    shop             shops?
+   notifications    notifications[]
    createdAt        DateTime @default(now())
    updatedAt        DateTime @updatedAt
    shopId           String?  @db.ObjectId
@@ -171,7 +173,7 @@ model userAnalytics {
    id                   String   @id  @default(auto()) @map("_id") @db.ObjectId
    userId               String   @db.ObjectId @unique
    lastVisited          DateTime
-   actions              UserActions[]
+   actions              Json
    country              String?
    city                 String?
    device               String?
@@ -182,15 +184,16 @@ model ProductAnalytics {
    id                   String   @id  @default(auto()) @map("_id") @db.ObjectId
    productId            String   @db.ObjectId @unique
    shopId               String   @db.ObjectId 
-   views                Int
-   cartAdds              Int
-   wishListsAdds        Int
-   purchases            Int
-   lastviewedAt         DateTime
+   views                Int      @default(0)
+   cartAdds             Int      @default(0)
+   wishListsAdds        Int      @default(0)
+   purchases            Int      @default(0)
+   lastviewedAt         DateTime?
+   createdAt            DateTime  @default(now())
+   updatedAt            DateTime  @updatedAt
    products           products     @relation(fields: [productId], references: [id])
    shops     shops        @relation(fields: [shopId], references: [id])
 }
-
 model ShopFollower {
   id        String    @id @default(auto()) @map("_id") @db.ObjectId
   shopId    String    @db.ObjectId
@@ -203,45 +206,6 @@ model ShopFollower {
   @@unique([shopId, userId])
 }
 
-
-
-
-
-model orders {
-  id              String        @id @default(auto()) @map("_id") @db.ObjectId
-  userId          String        @db.ObjectId
-  shopId          String        @db.ObjectId
-  total           Float
-  subtotal        Float
-  discount        Float?        @default(0)
-  deliveryCharge  Float?        @default(0)
-  status          OrderStatus   @default(Pending)
-  paymentStatus   PaymentStatus @default(Pending)
-  paymentMethod   String?
-  paymentIntentId String?       // stripe payment intent id
-  shippingAddress Json
-  items           OrderItem[]
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-
-  user            users         @relation(fields: [userId], references: [id])
-  shop            shops         @relation(fields: [shopId], references: [id])
-}
-
-model OrderItem {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  orderId     String   @db.ObjectId
-  productId   String   @db.ObjectId
-  title       String
-  image       String
-  price       Float
-  quantity    Int
-  color       String?
-  size        String?
-
-  order       orders   @relation(fields: [orderId], references: [id])
-  product     products @relation(fields: [productId], references: [id])
-}
 
 enum OrderStatus {
   Pending
@@ -259,20 +223,53 @@ enum PaymentStatus {
   Refunded
 }
 
-model address {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId    String   @db.ObjectId
-  label     String
-  name      String
-  street    String
-  city      String
-  zip       String
-  country   String
-  isDefault Boolean  @default(false)
-  user      users    @relation(fields: [userId], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model ShippingAddress {
+  id              String         @id @default(auto()) @map("_id") @db.ObjectId
+  userId          String         @db.ObjectId
+  transaction     transaction[]
+  label           String
+  name            String
+  street          String
+  city            String
+  zip             String
+  country         String
+  isDefault       Boolean        @default(false)
+  user            users          @relation(fields: [userId], references: [id])
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 }
+
+
+model OrderItem {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  orderId         String
+  order           orders   @relation(fields: [orderId], references: [id])
+  productId       String
+  product         products  @relation(fields: [productId], references: [id])
+  quantity        Int
+  price           Float
+  selectedOptions Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model orders {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId            String
+  user              users       @relation(fields: [userId], references: [id])
+  shopId            String
+  shop              shops       @relation(fields: [shopId], references: [id])
+  total             Float
+  paymentStatus     String      // "Paid", "Pending", "Failed"
+  status            String      // "Processing", "Shipped", "Delivered", "Cancelled"
+  shippingAddressId String?    @db.ObjectId
+  couponCode        String?
+  discountAmount    Float       @default(0)
+  items             OrderItem[]
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+}
+
 
 
 model flutterwaveSubAccount {
@@ -307,20 +304,56 @@ enum TransactionStatus {
 }
 
 model transaction {
-  id                    String   @id @default(auto()) @map("_id") @db.ObjectId
-  event                 String?
-  transactionId         String?   @unique
-  sessionId             String?   @unique    
-  userId                String
-  user                  users    @relation(fields: [userId], references: [id])
-  sellerSubaccountId    String?
-  amount                Float
-  payment_type          String?
-  currency              String
-  status                TransactionStatus @default(PENDING)
-  paymentMethod         String?
-  verified              Boolean  @default(false)
-  metadata              Json?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+  event              String?
+  transactionId      String? 
+  sessionId          String?   @unique    
+
+  userId             String    @db.ObjectId
+  user               users     @relation(fields: [userId], references: [id])
+
+  cart               Json?
+
+  shippingAddressId  String?   @db.ObjectId
+  shippingAddress    ShippingAddress? @relation(fields: [shippingAddressId], references: [id])
+
+  coupon             Json?
+
+  sellerSubaccountId String[]
+
+  amount             Float
+  payment_type       String?
+  currency           String
+  status             TransactionStatus @default(PENDING)
+  verified           Boolean  @default(false)
+  metadata           Json?
+
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+
+
+model notifications {
+  id            String           @id @default(auto()) @map("_id") @db.ObjectId
+  title         String
+  message       String
+  creatorId     String           @db.ObjectId  // 👈 user who triggered the notification
+  receiverId    String           @db.ObjectId  // 👈 seller who receives it
+  redirect_link String?
+  isRead        Boolean          @default(false)
+  type          NotificationType @default(GENERAL)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  creator       users            @relation(fields: [creatorId], references: [id])  // 👈 points to users
+  receiver      sellers          @relation(fields: [receiverId], references: [id]) // 👈 points to sellers
+}
+
+enum NotificationType {
+  GENERAL
+  ORDER
+  PAYMENT
+  PROMOTION
+  SYSTEM
 }

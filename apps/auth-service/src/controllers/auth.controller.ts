@@ -514,7 +514,7 @@ export const addUserAddress = async (
     }
 
     if (isDefault) {
-      await prisma.address.updateMany({
+      await prisma.shippingAddress.updateMany({
         where: {
           userId,
           isDefault: true
@@ -525,7 +525,7 @@ export const addUserAddress = async (
       })
     }
 
-    const newAddress = await prisma.address.create({
+    const newAddress = await prisma.shippingAddress.create({
       data: {
         userId,
         label,
@@ -561,7 +561,7 @@ export const deleteUserAddress = async(
        return next(new ValidationError("Address ID is required"))
     }
 
-    const existingAddress = await prisma.address.findFirst({
+    const existingAddress = await prisma.shippingAddress.findFirst({
        where: {
          id: addressId,
          userId,
@@ -571,7 +571,7 @@ export const deleteUserAddress = async(
        return next(new NotFoundError("Address ID is required"))
     }
 
-    await prisma.address.delete({
+    await prisma.shippingAddress.delete({
       where: {
         id: addressId
       }
@@ -594,7 +594,7 @@ export const getUserAddresses = async (
 ) => {
    try {
      const userId = req.user?.id
-     const addresses=await prisma.address.findMany({
+     const addresses=await prisma.shippingAddress.findMany({
        where: {
         userId,
        },
