@@ -21,6 +21,44 @@ export const getBanks = async (req: Request, res: Response) => {
   }
 }
 
+export const verifyCoupon = async (req: any, res: Response) => {
+  const { couponCode } = req.body
+  try {
+    const userId = req.user.id
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized!" })
+    }
+
+    if (!couponCode) {
+      return res.status(400).json({ success: false, message: "Coupon code is required!" })
+    }
+
+    const foundCoupon = await prisma.discount_codes.findUnique({
+      where: {
+        discountCode: couponCode
+      }
+    })
+
+    if (!foundCoupon) {
+      return res.status(400).json({ success: false, message: "Invalid Coupon Code!" })
+    }
+
+    const coupon = {
+      code: foundCoupon.discountCode,
+      discountPercent: foundCoupon.discountPercent,
+      discountAmount: foundCoupon.discountAmount,
+      discountedProductId: foundCoupon.discountedProductId
+    }
+
+    return res.status(200).json({ success: true, message: "Coupon verified successfully", coupon })
+
+  } catch (error) {
+    console.log("Error in the verifyCoupon function", error)
+    return res.status(500).json({ success: false, message: "Server Error" })
+  }
+}
+
 // create payment intent
 export const createPaymentIntent = async (
   req: any,
@@ -28,6 +66,9 @@ export const createPaymentIntent = async (
   next: NextFunction
 ) => {
   const { cart, shippingAddressId, coupon } = req.body
+
+  console.log(cart);
+  
 
   try {
     const userId = req.user.id
@@ -61,19 +102,21 @@ export const createPaymentIntent = async (
               sale_price: item.sale_price,
               shopId: item.shopId,
               selectedOptions: item.selectedOptions || {}
-            }))
-              .sort((a: any, b: any) => a.id.localeCompare(b.id))
+            })).sort((a: any, b: any) => a.id.localeCompare(b.id))
           )
 
-          if (existingCart === normalizedCart) {
+          // ✅ Also compare coupon — different coupon = different session
+          const existingCoupon = JSON.stringify(session.coupon || null)
+          const incomingCoupon = JSON.stringify(coupon || null)
+
+          if (existingCart === normalizedCart && existingCoupon === incomingCoupon) {
             return res.status(200).json({ sessionId: key.split(":")[1] })
           } else {
-            await redis.del(key)
+            await redis.del(key)  // ✅ delete stale session
           }
         }
       }
     }
-
     // fetch sellers and their flutterwave account
     const uniqueShopIds = [...new Set(cart.map((item: any) => item.shopId))]
 
@@ -181,7 +224,7 @@ export const createPaymentIntent = async (
       JSON.stringify(sessionData)
     )
 
-    return res.status(201).json({ sessionId })
+    return res.status(201).json({ sessionId, cart })
   } catch (error) {
     return next(error)
   }
@@ -227,12 +270,15 @@ export const initializePayment = async (
   next: NextFunction
 ) => {
   try {
-     const { sessionId } = req.body  // ✅ just receive sessionId
+    const { sessionId } = req.body  // ✅ just receive sessionId
+
+    console.log("REDIRECTURL", process.env.CLIENT_URL);
+    
 
     // fetch session from Redis internally
     const sessionData = await redis.get(`payment-session:${sessionId}`)
     if (!sessionData) return next(new ValidationError("Session not found"))
-    
+
     const session = JSON.parse(sessionData)
 
     const userId = req.user.id
@@ -306,9 +352,9 @@ export const initializePayment = async (
       item.sellerSubaccountId
     ))
 
-   const initiatedTransaction = await prisma.transaction.upsert({
-    where: { sessionId: session?.sessionId },
-    update: {
+    const initiatedTransaction = await prisma.transaction.upsert({
+      where: { sessionId: session?.sessionId },
+      update: {
         // update if already exists
         amount: session?.totalAmount,
         currency: "NGN",
@@ -316,8 +362,8 @@ export const initializePayment = async (
         cart: session?.cart,
         coupon: session?.coupon,
         shippingAddressId: session?.shippingAddressId
-    },
-    create: {
+      },
+      create: {
         // create if doesn't exist
         sessionId: session?.sessionId,
         userId: user?.id,
@@ -327,8 +373,8 @@ export const initializePayment = async (
         cart: session?.cart,
         coupon: session?.coupon,
         shippingAddressId: session?.shippingAddressId
-    }
-})
+      }
+    })
     res.status(200).json({
       paymentLink: response.data.data.link,
       initiatedTransaction
@@ -346,7 +392,7 @@ export const flutterwaveWebhook = async (
   next: NextFunction
 ) => {
   try {
-    console.log("I HAVE BEEN PINGED");  
+    console.log("I HAVE BEEN PINGED");
     const secretHash = process.env.FLUTTERWAVE_WEBHOOK_SECRET
     const signature = req.headers["verif-hash"]
 
@@ -360,16 +406,23 @@ export const flutterwaveWebhook = async (
 
     console.log("EVENT", event);
     console.log("DATA", data);
-    
-    
-    if (event === "charge.completed") {
-      await handleChargeCompleted(data)
-    }
+
+    // ✅ Respond to Flutterwave IMMEDIATELY
     res.status(200).json({ received: true })
+
+    // ✅ Process in background — errors won't affect the 200 response
+    if (event === "charge.completed") {
+      handleChargeCompleted(data).catch((error) => {
+        console.error("Error in handleChargeCompleted", error)
+      })
+    }
+
   } catch (error) {
     console.log("Error in the flutterwaveWebhook function", error);
-
-    return next(error)
+    // ✅ Still send 200 even if something fails — so Flutterwave doesn't retry
+    if (!res.headersSent) {
+      res.status(200).json({ received: true })
+    }
   }
 }
 

@@ -3,18 +3,21 @@
 import { useEffect, useState } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import axiosInstance from "@/utils/axiosInstance"
+import PaymentSuccess from "@/app/shared/components/payment-success/page"
 
 export default function PaymentCallbackPage() {
     const searchParams = useSearchParams()
     const router = useRouter()
     const [status, setStatus] = useState<"loading" | "success" | "failed">("loading")
 
+
+    const txRef = searchParams.get("tx_ref")
+    const txStatus = searchParams.get("status")
+    const transactionId = searchParams.get("transaction_id")
+
+
     useEffect(() => {
         const verifyPayment = async () => {
-            const txRef = searchParams.get("tx_ref")
-            const txStatus = searchParams.get("status")
-            const transactionId = searchParams.get("transaction_id")
-
             if (!txRef || !txStatus) {
                 setStatus("failed")
                 return
@@ -53,9 +56,9 @@ export default function PaymentCallbackPage() {
                 </div>
             )}
             {status === "success" && (
-                <div>
-                    <h1 className="text-2xl font-bold text-green-600">Payment Successful! 🎉</h1>
-                    <p className="text-gray-500">Redirecting to your orders...</p>
+                // <PaymentSuccess sessionId={txRef!} />
+                 <div>
+                    <h1 className="text-2xl font-bold text-green-600">Payment successful🎉</h1>
                 </div>
             )}
             {status === "failed" && (

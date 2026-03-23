@@ -89,91 +89,82 @@ export const verifyFlutterwaveTransaction = async (transactionId: string, retrie
 
 export const handleChargeCompleted = async (data: any) => {
   const tx = await verifyFlutterwaveTransaction(data.id)
+  console.log("✅ 1. Transaction verified")
 
-  console.log("AT THE HANDLECOMPLETED", tx);
-  
-
-  if (tx.status !== "successful") {
-    console.log(tx);
-    return
-  }
+  if (tx.status !== "successful") return
 
   const transaction = await prisma.transaction.findUnique({
     where: { sessionId: tx.tx_ref }
   })
+  console.log("✅ 2. Transaction found:", transaction?.id)
 
-  if (!transaction) {
-    throw new Error("Transaction not found")
-  }
-
+  if (!transaction) throw new Error("Transaction not found")
   if (transaction.status === "SUCCESS") return
 
   const aligns =
     transaction.currency === tx.currency &&
     transaction.amount === tx.charged_amount
+  console.log("✅ 3. Aligns:", aligns)
 
-  if (!aligns) {
-    throw new Error("Invalid Transaction")
-  }
+  if (!aligns) throw new Error("Invalid Transaction")
 
-  // ✅ fixed field names to match schema
   await prisma.transaction.update({
     where: { id: transaction.id },
     data: {
       transactionId: tx.id.toString(),
       status: "SUCCESS",
-      payment_type: tx.payment_type,  // ✅ was payment_type
+      payment_type: tx.payment_type,
       metadata: tx,
       verified: true
     }
   })
+  console.log("✅ 4. Transaction updated")
 
-  const sessionId = data.meta.sessionId
-  const userId = data.meta.userId
+  const sessionId = tx.meta.sessionId
+  const userId = tx.meta.userId
 
   const sessionKey = `payment-session:${sessionId}`
   const sessionData = await redis.get(sessionKey)
+  console.log("✅ 5. Session data:", sessionData ? "found" : "missing")
 
   if (!sessionData) {
-    console.warn("Session data expired or missing for", sessionId);
+    console.warn("Session data expired or missing for", sessionId)
     throw new Error("No session found. skipping order creation")
   }
 
-
   const stored = await prisma.transaction.findUnique({
-    where: {
-      sessionId
-    }
+    where: { sessionId }
   })
+  console.log("✅ 6. Stored transaction:", stored?.id)
 
-  if (!stored) {
-    throw new Error("Invalid sessionId")
-  }
+  if (!stored) throw new Error("Invalid sessionId")
 
   const { cart, amount, shippingAddressId, coupon } = stored
+  console.log("✅ 7. Cart items:", (cart as any[]).length)
 
   const user = await prisma.users.findUnique({ where: { id: userId } })
+  console.log("✅ 8. User found:", user?.email)
+
   const name = user?.name!
   const email = user?.email!
-
 
   const cartItems = cart as any[]
   const couponData = coupon as any
 
   const shopGrouped = cartItems.reduce((acc: any, item: any) => {
-    if (!acc[item.shopId]) {
-      acc[item.shopId] = []
-    }
+    if (!acc[item.shopId]) acc[item.shopId] = []
     acc[item.shopId].push(item)
     return acc
   }, {})
+  console.log("✅ 9. Shop groups:", Object.keys(shopGrouped))
 
-  // ✅ fetch userAnalytics once before the loop
   let existingAnalytics = await prisma.userAnalytics.findUnique({
     where: { userId }
   })
+  console.log("✅ 10. Existing analytics:", existingAnalytics ? "found" : "none")
 
   for (const shopId in shopGrouped) {
+    console.log(`✅ 11. Processing shop: ${shopId}`)
     const orderItems = shopGrouped[shopId]
 
     let orderTotal = orderItems.reduce(
@@ -198,6 +189,7 @@ export const handleChargeCompleted = async (data: any) => {
         orderTotal -= discount
       }
     }
+    console.log(`✅ 12. Order total for shop ${shopId}: ${orderTotal}`)
 
     await prisma.orders.create({
       data: {
@@ -219,17 +211,20 @@ export const handleChargeCompleted = async (data: any) => {
         }
       }
     })
+    console.log(`✅ 13. Order created for shop: ${shopId}`)
 
     for (const item of orderItems) {
       const { id: productId, quantity } = item
+      console.log(`✅ 14. Processing product: ${productId}`)
 
       await prisma.products.update({
         where: { id: productId },
         data: {
           stock: { decrement: quantity },
-          totalSales: { increment: quantity },
+          totalSales: { increment: quantity }
         }
       })
+      console.log(`✅ 15. Product stock updated: ${productId}`)
 
       await prisma.productAnalytics.upsert({
         where: { productId },
@@ -243,6 +238,7 @@ export const handleChargeCompleted = async (data: any) => {
           purchases: { increment: quantity }
         }
       })
+      console.log(`✅ 16. Product analytics updated: ${productId}`)
 
       const newAction = {
         productId,
@@ -251,7 +247,6 @@ export const handleChargeCompleted = async (data: any) => {
         timestamp: Date.now()
       }
 
-      // ✅ userAnalytics fetched once outside loop, reused here
       const currentActions = Array.isArray(existingAnalytics?.actions)
         ? (existingAnalytics!.actions as Prisma.JsonArray)
         : []
@@ -264,6 +259,7 @@ export const handleChargeCompleted = async (data: any) => {
             actions: [...currentActions, newAction]
           }
         })
+        console.log(`✅ 17. User analytics updated`)
       } else {
         existingAnalytics = await prisma.userAnalytics.create({
           data: {
@@ -272,11 +268,12 @@ export const handleChargeCompleted = async (data: any) => {
             actions: [newAction]
           }
         })
+        console.log(`✅ 17. User analytics created`)
       }
     }
   }
 
-  // ✅ email sent once outside loop
+  console.log("✅ 18. Sending confirmation email to:", email)
   await sendEmail(
     email,
     "🛍 Your Eshop Order Confirmation",
@@ -290,23 +287,19 @@ export const handleChargeCompleted = async (data: any) => {
       trackingUrl: `https://eshop.com/order/${sessionId}`
     }
   )
+  console.log("✅ 19. Email sent")
 
-  // ✅ seller notifications outside loop, fetched once
   const createdShopIds = Object.keys(shopGrouped)
   const sellerShops = await prisma.shops.findMany({
     where: { id: { in: createdShopIds } },
-    select: {
-      id: true,
-      sellerId: true,
-      name: true,
-    }
+    select: { id: true, sellerId: true, name: true }
   })
+  console.log("✅ 20. Seller shops found:", sellerShops.length)
 
   for (const shop of sellerShops) {
     const firstProduct = shopGrouped[shop.id][0]
     const productTitle = firstProduct?.title || "a new item"
 
-    // ✅ fixed notification message
     await prisma.notifications.create({
       data: {
         title: "🛒 New Order Received",
@@ -316,19 +309,20 @@ export const handleChargeCompleted = async (data: any) => {
         redirect_link: `https://eshop.com/order/${sessionId}`
       }
     })
+    console.log(`✅ 21. Seller notification created for: ${shop.sellerId}`)
   }
 
-  // ✅ admin notification once outside loop
   await prisma.notifications.create({
     data: {
       title: "📦 Platform Order Alert",
       message: `A new order was placed by ${name}.`,
       creatorId: userId,
-      receiverId: "admin",
+      receiverId: "6965a586bcd6ca59e76084f5", // admin
       redirect_link: `https://eshop.com/order/${sessionId}`
     }
   })
+  console.log("✅ 22. Admin notification created")
 
-  // ✅ delete session once after everything is done
   await redis.del(sessionKey)
+  console.log("✅ 23. Session deleted — handleChargeCompleted COMPLETE ✅")
 }
