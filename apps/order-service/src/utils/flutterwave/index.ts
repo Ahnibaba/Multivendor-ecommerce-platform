@@ -182,7 +182,7 @@ export const handleChargeCompleted = async (data: any) => {
       )
 
       if (discountedItem) {
-        const discount =
+          const discount =
           couponData.discountPercent > 0
             ? (discountedItem.sale_price * discountedItem.quantity * couponData.discountPercent) / 100
             : couponData.discountAmount
@@ -200,7 +200,7 @@ export const handleChargeCompleted = async (data: any) => {
         status: "Processing",
         shippingAddressId: shippingAddressId || null,
         couponCode: couponData?.code || null,
-        discountAmount: couponData?.discountAmount || 0,
+        discountAmount: couponData?.discountPercent || couponData?.discountAmount || 0,
         items: {
           create: orderItems.map((item: any) => ({
             productId: item.id,

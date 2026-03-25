@@ -32,6 +32,9 @@ const CartPage = () => {
     const cart = useStore((state) => state.cart)
     const removeFromCart = useStore((state) => state.removeFromCart)
 
+    console.log("IAMCAART", cart);
+    
+
     const createPaymentSession = async () => {
         setLoading(true)
         try {
@@ -46,7 +49,6 @@ const CartPage = () => {
                 }
             })
 
-            console.log(sessionRes.data.cart);
 
             const paymentRes = await axiosInstance.post("/order/api/create-payment-session", {
                 sessionId: sessionRes.data.sessionId
@@ -186,7 +188,7 @@ const CartPage = () => {
                             </thead>
                             <tbody>
                                 {cart?.map((item: any) => (
-                                    <tr key={item.id} className="border-b border-b-[#0000000e]">
+                                    <tr key={item.id+item.selectedOptions?.size+item.selectedOptions?.color} className="border-b border-b-[#0000000e]">
                                         <td className="flex items-center gap-4 p-4">
                                             <Image
                                                 src={item?.images[0]?.url}
@@ -199,7 +201,7 @@ const CartPage = () => {
                                                 <span className="font-medium">{item.title}</span>
                                                 {item?.selectedOptions && (
                                                     <div className="text-sm text-gray-500">
-                                                        {item?.selectedOptions?.color && (
+                                                        {item?.selectedOptions.color && (
                                                             <span>
                                                                 Color: { }
                                                                 <span style={{

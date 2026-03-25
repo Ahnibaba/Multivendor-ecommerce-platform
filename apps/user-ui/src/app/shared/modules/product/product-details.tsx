@@ -18,7 +18,7 @@ import axiosInstance from '@/utils/axiosInstance'
 const ProductDetails = ({ productDetails }: { productDetails: any }) => {
     const [currentImage, setCurrentImage] = useState(productDetails?.images[0]?.url)
     const [currentIndex, setCurrentIndex] = useState(0)
-    const [isSelected, setIsSelected] = useState(
+    const [isColorSelected, setIsColorSelected] = useState(
         productDetails?.colors?.[0] || ""
     )
     const [isSizeSelected, setIsSizeSelected] = useState(
@@ -38,9 +38,16 @@ const ProductDetails = ({ productDetails }: { productDetails: any }) => {
         setMounted(true)
     }, [])
 
+    console.log("PRODUCTDETAILS", productDetails);
+    
+
     const addToCart = useStore((state: any) => state.addToCart)
     const cart = useStore((state: any) => state.cart)
-    const isInCart = cart.some((item: any) => item.id === productDetails.id)
+    const isInCart = cart.some((item: any) => 
+    item.id === productDetails.id &&
+    item.selectedOptions?.color === isSizeSelected &&
+    item.selectedOptions?.size === isColorSelected
+)
     const addToWishlist = useStore((state: any) => state.addToWishlist)
     const removeFromWishlist = useStore((state: any) => state.removeFromWishlist)
     const wishlist = useStore((state: any) => state.wishlist)
@@ -182,7 +189,7 @@ const ProductDetails = ({ productDetails }: { productDetails: any }) => {
                                                 ...productDetails,
                                                 quantity,
                                                 selectedOptions: {
-                                                    color: isSelected,
+                                                    color: isColorSelected,
                                                     size: isSizeSelected
                                                 }
                                             },
@@ -224,11 +231,11 @@ const ProductDetails = ({ productDetails }: { productDetails: any }) => {
                                             {productDetails?.colors?.map((color: string, index: number) => (
                                                 <button
                                                     key={index}
-                                                    className={`w-8 h-8 cursor-pointer rounded-full border-2 transition ${isSelected === color
+                                                    className={`w-8 h-8 cursor-pointer rounded-full border-2 transition ${isColorSelected === color
                                                             ? "border-gray-400 scale-110 shadow-md"
                                                             : "border-transparent"
                                                         }`}
-                                                    onClick={() => setIsSelected(color)}
+                                                    onClick={() => setIsColorSelected(color)}
                                                     style={{ backgroundColor: color }}
                                                 >
 
@@ -250,7 +257,7 @@ const ProductDetails = ({ productDetails }: { productDetails: any }) => {
                                                         ? "bg-gray-800 text-white"
                                                         : "bg-gray-300 text-black"
                                                     }`}
-                                                onClick={() => setIsSelected(size)}
+                                                onClick={() => setIsSizeSelected(size)}
                                             >
                                                 {size}
                                             </button>
@@ -303,7 +310,7 @@ const ProductDetails = ({ productDetails }: { productDetails: any }) => {
                                         ...productDetails,
                                         quantity,
                                         selectedOptions: {
-                                            color: isSelected,
+                                            color: isColorSelected,
                                             size: isSizeSelected
                                         }
                                     },
