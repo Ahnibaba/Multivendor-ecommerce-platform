@@ -1,18 +1,19 @@
 "use client"
 import QuickActionCard from '@/app/shared/components/cards/quick-action.card'
 import StatCard from '@/app/shared/components/cards/stat.card'
+import ChangePassword from '@/app/shared/components/change-password'
 import ShippingAddressSection from '@/app/shared/components/shippingAddress'
-import useUser from '@/hooks/useUser'
+import OrdersTable from '@/app/shared/components/tables/orders-table'
+import useRequireAuth from '@/hooks/useRequiredAuth'
 import axiosInstance from '@/utils/axiosInstance'
-import { QueryClient, useQueryClient } from '@tanstack/react-query'
+import { QueryClient, useQuery, useQueryClient } from '@tanstack/react-query'
 import { BadgeCheck, Bell, CheckCircle, Clock, Gift, Inbox, Loader2, Lock, LogOut, MapPin, Pencil, PhoneCall, Receipt, Settings, ShoppingBag, Truck, User } from 'lucide-react'
 import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import React, { useEffect, useState } from 'react'
+import "../../global.css"
 
 const Page = () => {
-  const { isLoading, user } = useUser()
-
  
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -20,6 +21,26 @@ const Page = () => {
   const queryTab = searchParams.get("active") || "Profile"
 
   const [activeTab, setActiveTab] = useState(queryTab)
+
+
+  const { user, isLoading } = useRequireAuth()
+  const { data: orders = [] } = useQuery({
+     queryKey: ["user-orders"],
+     queryFn: async () => {
+       const res = await axiosInstance.get(`/order/api/get-user-orders`)
+       return res.data.orders
+     }
+  })
+
+  const totalOrders = orders.length
+  const processingOrders = orders.filter(
+    (o: any) => 
+      o?.status !== "Delivered" && o?.status !== "Cancelled"
+  ).length
+
+  const completedOrders = orders.filter(
+     (o: any) => o?.status === "Delivered"
+  ).length
 
   useEffect(() => {
     if (activeTab !== queryTab) {
@@ -30,7 +51,7 @@ const Page = () => {
   }, [activeTab])
 
   const logOutHandler = async () => {
-    await axiosInstance.get("/logout-user").then((res) => {
+    await axiosInstance.get("/api/logout-user").then((res) => {
       queryClient.invalidateQueries({ queryKey: ["user"] })
 
       router.push("/login")
@@ -60,17 +81,17 @@ const Page = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
           <StatCard
             title="Total Orders"
-            count={10}
+            count={totalOrders}
             Icon={Clock}
           />
           <StatCard
             title="Processing Orders"
-            count={4}
+            count={processingOrders}
             Icon={Truck}
           />
           <StatCard
             title="Completed Orders"
-            count={5}
+            count={completedOrders}
             Icon={CheckCircle}
           />
         </div>
@@ -166,7 +187,13 @@ const Page = () => {
               activeTab === "Shipping Address" ? (
                 <ShippingAddressSection />
               ) : (
-                <></>
+                activeTab === "My Orders" ? (
+                  <OrdersTable />
+                ) : (
+                  activeTab === "Change Password" ? (
+                    <ChangePassword />
+                  ): <></>
+                )
               )
             )}
           </div>

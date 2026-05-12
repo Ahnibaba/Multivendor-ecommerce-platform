@@ -199,7 +199,7 @@ export const handleChargeCompleted = async (data: any) => {
         paymentStatus: "Paid",
         status: "Processing",
         shippingAddressId: shippingAddressId || null,
-        couponCode: couponData?.code || null,
+        couponCode: couponData || null,
         discountAmount: couponData?.discountPercent || couponData?.discountAmount || 0,
         items: {
           create: orderItems.map((item: any) => ({

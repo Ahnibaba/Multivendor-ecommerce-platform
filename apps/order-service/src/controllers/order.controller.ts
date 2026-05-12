@@ -1,6 +1,6 @@
 import { Response, Request, NextFunction } from "express"
 import { getBanksHelper, handleChargeCompleted } from "../utils/flutterwave"
-import { ValidationError } from "../../../../packages/error-handler"
+import { NotFoundError, ValidationError } from "../../../../packages/error-handler"
 import prisma from "../../../../packages/libs/prisma"
 import axios from "axios"
 import redis from "../../../../packages/libs/redis"
@@ -21,43 +21,43 @@ export const getBanks = async (req: Request, res: Response) => {
   }
 }
 
-export const verifyCoupon = async (req: any, res: Response) => {
-  const { couponCode } = req.body
-  try {
-    const userId = req.user.id
+// export const verifyCoupon = async (req: any, res: Response) => {
+//   const { couponCode } = req.body
+//   try {
+//     const userId = req.user.id
 
-    if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthorized!" })
-    }
+//     if (!userId) {
+//       return res.status(401).json({ success: false, message: "Unauthorized!" })
+//     }
 
-    if (!couponCode) {
-      return res.status(400).json({ success: false, message: "Coupon code is required!" })
-    }
+//     if (!couponCode) {
+//       return res.status(400).json({ success: false, message: "Coupon code is required!" })
+//     }
 
-    const foundCoupon = await prisma.discount_codes.findUnique({
-      where: {
-        discountCode: couponCode
-      }
-    })
+//     const foundCoupon = await prisma.discount_codes.findUnique({
+//       where: {
+//         discountCode: couponCode
+//       }
+//     })
 
-    if (!foundCoupon) {
-      return res.status(400).json({ success: false, message: "Invalid Coupon Code!" })
-    }
+//     if (!foundCoupon) {
+//       return res.status(400).json({ success: false, message: "Invalid Coupon Code!" })
+//     }
 
-    const coupon = {
-      code: foundCoupon.discountCode,
-      discountPercent: foundCoupon.discountPercent,
-      discountAmount: foundCoupon.discountAmount,
-      discountedProductId: foundCoupon.discountedProductId
-    }
+//     const coupon = {
+//       code: foundCoupon.discountCode,
+//       discountPercent: foundCoupon.discountPercent,
+//       discountAmount: foundCoupon.discountAmount,
+//       discountedProductId: foundCoupon.discountedProductId
+//     }
 
-    return res.status(200).json({ success: true, message: "Coupon verified successfully", coupon })
+//     return res.status(200).json({ success: true, message: "Coupon verified successfully", coupon })
 
-  } catch (error) {
-    console.log("Error in the verifyCoupon function", error)
-    return res.status(500).json({ success: false, message: "Server Error" })
-  }
-}
+//   } catch (error) {
+//     console.log("Error in the verifyCoupon function", error)
+//     return res.status(500).json({ success: false, message: "Server Error" })
+//   }
+// }
 
 // create payment intent
 export const createPaymentIntent = async (
@@ -68,7 +68,7 @@ export const createPaymentIntent = async (
   const { cart, shippingAddressId, coupon } = req.body
 
   console.log(cart);
-  
+
 
   try {
     const userId = req.user.id
@@ -186,6 +186,8 @@ export const createPaymentIntent = async (
     })
 
 
+    let discount
+
     // ✅ calculate total directly from cart before the loop
     let totalAmount = cart.reduce((sum: number, item: any) => {
       return sum + item.quantity * item.sale_price
@@ -196,7 +198,7 @@ export const createPaymentIntent = async (
       const discountedItem = cart.find((item: any) => item.id === coupon.discountedProductId)
 
       if (discountedItem) {
-        const discount =
+        discount =
           coupon.discountPercent > 0
             ? (discountedItem.sale_price * discountedItem.quantity * coupon.discountPercent) / 100
             : coupon.discountAmount
@@ -215,7 +217,8 @@ export const createPaymentIntent = async (
       totalAmount,
       shippingAddressId: shippingAddressId || null,
       coupon: coupon || null,
-      currency: "NGN"
+      currency: "NGN",
+      discountAmount: discount
     }
 
     await redis.setex(
@@ -273,7 +276,7 @@ export const initializePayment = async (
     const { sessionId } = req.body  // ✅ just receive sessionId
 
     console.log("REDIRECTURL", process.env.CLIENT_URL);
-    
+
 
     // fetch session from Redis internally
     const sessionData = await redis.get(`payment-session:${sessionId}`)
@@ -427,5 +430,271 @@ export const flutterwaveWebhook = async (
 }
 
 
+// get sellers orders
+export const getSellerOrders = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const shop = await prisma.shops.findUnique({
+      where: {
+        sellerId: req.seller.id
+      }
+    })
+
+    // fetch all orders for this shop
+    const orders = await prisma.orders.findMany({
+      where: {
+        shopId: shop?.id
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatar: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: "desc"
+      }
+    })
 
 
+    res.status(201).json({ success: true, orders })
+  } catch (error) {
+    next(error)
+  }
+}
+
+
+// get order details
+export const getOrderDetails = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orderId = req.params.id
+
+    const order = await prisma.orders.findUnique({
+      where: { id: orderId },
+      include: {
+        items: true,
+      }
+    })
+
+    if (!order) {
+      return next(new NotFoundError("Order not found with the id!"))
+    }
+
+    const shippingAddress = order.shippingAddressId
+      ?  await prisma.shippingAddress.findUnique({
+          where: { id: order.shippingAddressId }
+         })
+      : null  
+      
+    const coupon = order.couponCode
+      ? await prisma?.discount_codes.findUnique({
+      where: {
+        discountCode: order.couponCode
+      }
+    }) 
+    : null 
+
+    // fetch all products details in one go
+    const productIds = order.items.map((item) => item.productId)
+
+    const products = await prisma.products.findMany({
+      where: {
+        id: { in: productIds }
+      },
+      select: {
+        id: true,
+        title: true,
+        images: true
+      }
+    })
+
+
+    const productMap = new Map((products.map((p) => [p.id, p])))
+
+    const items = order.items.map((item) => ({
+       ...item,
+       selectedOptions: item.selectedOptions,
+       product: productMap.get(item.productId) || null,
+    }))
+
+    res.status(200).json({
+      success: true,
+      order: {
+        ...order,
+        items,
+        shippingAddress,
+        couponCode: coupon
+      }
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+// update order status
+export const updateDeliveryStatus = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+     const { orderId } = req.params
+     const { deliveryStatus } = req.body
+
+     if (!orderId || !deliveryStatus) {
+       return res.status(400).json({ error: "Missing order ID or delivery status." })
+     }
+
+     const allowedStatuses = [
+       "Ordered",
+       "Packed",
+       "Shipped",
+       "Out for Delivery",
+       "Delivered"
+     ]
+
+     if (!allowedStatuses.includes(deliveryStatus)) {
+       return next(new ValidationError("Invalid delivery status."))
+     }
+
+     const existingOrder = await prisma.orders.findUnique({
+        where: { id: orderId }
+     })
+
+     if (!existingOrder) {
+       return next(new NotFoundError("Order not found!"))
+     }
+
+     const updatedOrder = await prisma.orders.update({
+        where: { id: orderId },
+        data: {
+           status: deliveryStatus,
+           updatedAt: new Date()  
+        }
+     })
+
+     return res.status(200).json({
+       success: true,
+       message: "Delivery status updated successfully.",
+       order: updatedOrder
+     })
+  } catch (error) {
+    return next(error)
+  }
+}
+
+
+// verify coupon code
+export const verifyCouponCode = async (req: any, res: Response, next: NextFunction) => {
+  try {
+     const { couponCode, cart } = req.body
+
+     if (!couponCode || !cart || cart.length === 0) {
+       return next(new ValidationError("Coupon code and cart are required!"))
+     }
+
+     // Fetch the discount code
+     const discount = await prisma.discount_codes.findUnique({
+       where: { discountCode: couponCode }
+     })
+
+     if (!discount) {
+       return next(new ValidationError("Coupon code isn't valid!"))
+     }
+
+     // Find matching product that includes this discount code
+     const matchingProduct = cart.find((item: any) => 
+       item.discount_codes?.some((d: any) => d === discount.id)
+     )
+
+     if (!matchingProduct) {
+       return res.status(200).json({
+         valid: false,
+         discount: 0,
+         discountAmount: 0,
+         message: "No matching product found in cart for this coupon"
+       })
+     }
+
+     let discountAmount = 0
+     const price = matchingProduct.sale_price * matchingProduct.quantity
+
+     if (discount.discountType === "percentage") {
+       discountAmount = (price * discount.discountValue!) / 100
+     } else if (discount.discountType === "flat") {
+       discountAmount = discount.discountValue!
+     }
+
+     // prevent discount from being greater than total price
+     discountAmount = Math.min(discountAmount, price)
+
+     res.status(200).json({
+       valid: true,
+       discount: discount.discountValue,
+       discountAmount: discountAmount.toFixed(2),
+       discountedProductId: matchingProduct.id,
+       discountType: discount.discountType,
+       message: "Discount applied to 1 eligible product"
+     })
+
+  } catch (error) {
+    next(error)
+  }
+}
+
+// get user orders
+export const getUserOrders = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const orders = await prisma.orders.findMany({
+      where: { userId: req.user.id },
+      include: { items: true },
+      orderBy: { createdAt: "desc" }
+    })
+
+    res.status(201).json({
+      success: true,
+      orders
+    })
+  } catch (error) {
+    return next(error)
+  }
+}
+
+
+// get all orders
+export const getAllOrders = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    
+    // fetch all orders for this shop
+    const orders = await prisma.orders.findMany({
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            avatar: true
+          }
+        }
+      },
+      orderBy: {
+        createdAt: "desc"
+      }
+    })
+
+
+    res.status(201).json({ success: true, orders })
+  } catch (error) {
+    next(error)
+  }
+}
+
+// (async () => {
+//   const updateOrders = await prisma.orders.updateMany({
+//     data: {
+//       couponCode: "flash_back_offer_2"
+//     }
+//   })
+
+//   console.log(`Updated ${updateOrders.count} orders`)
+//   await prisma.$disconnect()
+// })()

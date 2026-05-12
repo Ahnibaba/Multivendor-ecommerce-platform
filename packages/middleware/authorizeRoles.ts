@@ -9,6 +9,12 @@ export const isSeller = async (req: any, res: Response, next: NextFunction) => {
   }
   next()
 }
+export const isAdmin = async (req: any, res: Response, next: NextFunction) => {
+  if (req.role !== "admin") {
+    return next(new AuthError("Access denied: Admin only"))
+  }
+  next()
+}
 
 export const isUser = async (req: any, res: Response, next: NextFunction) => {
   if (req.role !== "user") {

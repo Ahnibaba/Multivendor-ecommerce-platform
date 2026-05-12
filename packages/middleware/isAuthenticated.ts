@@ -8,8 +8,9 @@ const isAuthenticated = async (req: any, res: Response, next: NextFunction) => {
     console.log("COOKIES", req.cookies)
 
     const token =
-      req.cookies["access_token"] || 
+      req.cookies["access-token"] || 
       req.cookies["seller-access-token"] ||
+      req.cookies["admin-access-token"] ||
       req.headers.authorization?.split(" ")[1]
 
     if (!token) {
@@ -23,7 +24,7 @@ const isAuthenticated = async (req: any, res: Response, next: NextFunction) => {
       process.env.ACCESS_TOKEN_SECRET!
     ) as {
       id: string;
-      role: "user" | "seller"
+      role: "user" | "seller" | "admin"
     }
     if (!decoded) {
       return res.status(401).json({
@@ -41,6 +42,14 @@ const isAuthenticated = async (req: any, res: Response, next: NextFunction) => {
         }
       })
       req.user = account
+    } else if (decoded.role === "admin") {
+      account = await prisma.admins.findUnique({
+        where: { id: decoded.id },
+        include: {
+           avatar: true
+        }
+      })
+      req.admin = account
     } else {
       account = await prisma.sellers.findUnique({
         where: { id: decoded.id },

@@ -11,7 +11,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import React, { useEffect, useState } from 'react'
-import toast from 'react-hot-toast'
+import { toast } from 'sonner'
 
 const CartPage = () => {
     const { user } = useUser()
@@ -24,6 +24,8 @@ const CartPage = () => {
     const [coupon, setCoupon] = useState("")
     const [selectedAddressId, setSelectedAddressId] = useState("")
     const [serverError, setServerError] = useState<string | null>(null)
+    const [error, setError] = useState("")
+    const [storedCouponCode, setStoredCouponCode] = useState("")
 
     const router = useRouter()
     const location = useLocationTracking()
@@ -33,9 +35,46 @@ const CartPage = () => {
     const removeFromCart = useStore((state) => state.removeFromCart)
 
     console.log("IAMCAART", cart);
+
+    const couponCodeAppHandler = async () => {
+       setError("")
+
+       if (!couponCode.trim()) {
+         setError("Coupon code is required!")
+         return
+       }
+
+       try {
+         const res = await axiosInstance.put("/order/api/verify-coupon", {
+            couponCode: couponCode.trim(),
+            cart
+         })
+
+         if (res.data.valid) {
+            setStoredCouponCode(couponCode.trim())
+            setDiscountAmount(parseFloat(res.data.discountAmount))
+            setDiscountPercent(res.data.discount)
+            setDiscountedProductId(res.data.discountedProductId)
+            setCouponCode("")
+         }else {
+            setDiscountAmount(0)
+            setDiscountPercent(0)
+            setDiscountedProductId("")
+            setError(res.data.message || "Coupon not valid for any items in cart.")
+         }
+       } catch (error: any) {
+         setDiscountAmount(0)
+            setDiscountPercent(0)
+            setDiscountedProductId("")
+            setError(error.data.message || "Coupon not valid for any items in cart.")
+       }
+    }
     
 
     const createPaymentSession = async () => {
+        if(addresses?.length === 0) {
+          toast.error("Please set your delivery address to create an order!")  
+        }
         setLoading(true)
         try {
             const sessionRes = await axiosInstance.post("/order/api/create-payment-intent", {
@@ -128,7 +167,7 @@ const CartPage = () => {
         mutationFn: async (couponCode: string) => {
             const response = await axiosInstance.post(
                 `${process.env.NEXT_PUBLIC_SERVER_URI}/order/api/verify-coupon-code`,
-                { couponCode }
+                { couponCode, cart }
             )
             return response.data
         },

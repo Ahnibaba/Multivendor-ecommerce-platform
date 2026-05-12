@@ -1,6 +1,6 @@
 import { Response } from "express"
 
-export const setCookie = (res: Response, name: string, value: string) => {
+export const setCookie = (res: Response, name: string, value: string, maxAge: number) => {
    res.cookie(
      name,
      value,
@@ -8,7 +8,7 @@ export const setCookie = (res: Response, name: string, value: string) => {
         httpOnly: true,
         secure: true,
         sameSite: "none",
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days  
+        maxAge
      }
    ) 
 }

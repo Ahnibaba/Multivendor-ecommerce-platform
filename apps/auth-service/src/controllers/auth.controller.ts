@@ -5,6 +5,7 @@ import { checkOtpRestrictions, handleForgotPassword, sendOtp, trackOtpRequests, 
 import bcrypt from "bcryptjs"
 import jwt, { JsonWebTokenError } from "jsonwebtoken"
 import { setCookie } from "../utils/cookies/setCookies"
+import { sendLog } from "../utils/sendLog"
 
 
 // Register a new user
@@ -113,8 +114,8 @@ export const loginUser = async(req: Request, res: Response, next: NextFunction) 
     )
 
     // store the refresh and access token in an httpOnly secure cookies
-    setCookie(res, "refresh_token", refreshToken)
-    setCookie(res, "access_token", accessToken)
+    setCookie(res, "refresh-token", refreshToken, 7 * 24 * 60 * 60 * 1000)
+    setCookie(res, "access-token", accessToken, 15 * 60 * 1000)
 
     res.status(200).json({
       message: "Login successful!",
@@ -130,8 +131,9 @@ export const loginUser = async(req: Request, res: Response, next: NextFunction) 
 export const refreshToken = async (req: any, res: Response, next: NextFunction) => {
   try {
     const refreshToken =
-      req.cookies["refresh_token"] || 
+      req.cookies["refresh-token"] || 
       req.cookies["seller-refresh-token"] ||
+      req.cookies["admin-refresh-token"] ||
       req.headers.authorization?.split(" ")[1]
 
     if (!refreshToken) {
@@ -168,9 +170,9 @@ export const refreshToken = async (req: any, res: Response, next: NextFunction) 
     )
 
     if (decoded.role === "user") {
-      setCookie(res, "access_token", newAccessToken)
+      setCookie(res, "access-token", newAccessToken, 7 * 24 * 60 * 60 * 1000)
     } else if(decoded.role === "seller") {
-      setCookie(res, "seller-access-token", newAccessToken)
+      setCookie(res, "seller-access-token", newAccessToken, 15 * 60 * 1000)
     }
     req.role = decoded.role
     return res.status(201).json({ success: true })
@@ -428,8 +430,8 @@ export const loginSeller = async(req: Request, res: Response, next: NextFunction
       return next(new ValidationError("Invalid email or password!"))
     }
 
-    res.clearCookie("access_token")
-    res.clearCookie("refresh_token")
+    res.clearCookie("access-token")
+    res.clearCookie("refresh-token")
 
     // Generate access and refresh tokens
     const accessToken = jwt.sign(
@@ -445,8 +447,8 @@ export const loginSeller = async(req: Request, res: Response, next: NextFunction
     )
 
     // store access and refresh token
-    setCookie(res, "seller-refresh-token", refreshToken)
-    setCookie(res, "seller-access-token", accessToken)
+    setCookie(res, "seller-refresh-token", refreshToken, 7 * 24 * 60 * 60 * 1000)
+    setCookie(res, "seller-access-token", accessToken, 15 * 60 * 1000)
 
     res.status(200).json({
       message: "Login successful",
@@ -478,13 +480,13 @@ export const sample = async(req: Request, res: Response, next: NextFunction) => 
 
 export const logoutUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    res.clearCookie("access_token", {
+    res.clearCookie("access-token", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "none",
     })
 
-    res.clearCookie("refresh_token", {
+    res.clearCookie("refresh-token", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "none",
@@ -609,4 +611,166 @@ export const getUserAddresses = async (
    } catch (error) {
      next(error)
    }
+}
+
+
+export const updateUserPassword = async (req: any, res: Response, next: NextFunction) => {
+   try {
+     const userId = req.user?.id
+     const { currentPassword, newPassword, confirmPassword } = req.body
+
+     if (!currentPassword || !newPassword || !confirmPassword) {
+        return next(new ValidationError("All fields are required"))
+     }
+
+     if (newPassword !== confirmPassword) {
+       return next(new ValidationError("New passwords do not match"))
+     }
+
+     if (currentPassword === newPassword) {
+       return next(new ValidationError("New password cannot be the same as the current password"))
+     }
+
+     const user = await prisma.users.findUnique({
+       where: { id: userId }
+     })
+
+     if (!user || !user.password) {
+        return next(new AuthError("User not found or password not set"))
+     }
+
+     const isPasswordCorrect = await bcrypt.compare(currentPassword, user.password)
+
+     if (!isPasswordCorrect) {
+        return next(new AuthError("current password is incorrect"))
+     }
+
+     const hashedPassword = await bcrypt.hash(newPassword, 12)
+
+     await prisma.users.update({
+       where: { id: userId },
+       data: { password: hashedPassword }
+     })
+
+     res.status(200).json({ message: "Password updated successfully" })
+   } catch (error) {
+     next(error)
+   }
+}
+
+
+
+export const loginAdmin = async (req: any, res: Response, next: NextFunction) => {
+   try {
+     const { email, password } = req.body
+
+     if (!email || !password) {
+        return next(new ValidationError("Email and password are required!"))
+     }
+
+     const user = await prisma.admins.findUnique({ where: { email } })
+
+     if (!user) return next(new AuthError("User doesn't exists!"))
+
+     // verify password
+     const isMatch = await bcrypt.compare(password, user.password!)
+     if (!isMatch) {
+       return next(new AuthError("Invalid email or password"))
+     }
+
+     const isAdmin = user?.role === "admin"
+
+     if (!isAdmin) {
+       sendLog({
+         type: "error",
+         message: `Admin login failed for ${email} - not an admin`,
+         source: "auth-service",
+       })
+       return next(new AuthError("Invalid access!"))
+     }
+
+     sendLog({
+       type: "success",
+       message: `Admin login successful: ${email}`,
+       source: "auth-service"
+     })
+
+    res.clearCookie(
+      "seller-access-token",
+      {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+      }
+
+    )
+    res.clearCookie(
+      "seller-refresh-token",
+      {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+      }
+    )
+    res.clearCookie(
+      "access-token",
+      {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+      }
+
+    )
+    res.clearCookie(
+      "refresh-token",
+      {
+        httpOnly: true,
+        secure: true,
+        sameSite: "none",
+      }
+    )
+
+     
+     // Generate access and refresh token
+     const accessToken = jwt.sign(
+       { id: user.id, role: "admin" },
+       process.env.ACCESS_TOKEN_SECRET as string,
+       {
+         expiresIn: "15m"
+       }
+     )
+
+     const refreshToken = jwt.sign(
+        { id: user.id, role: "admin" },
+        process.env.REFRESH_TOKEN_SECRET as string,
+        {
+          expiresIn: "7d"
+        }
+     )
+
+     // store the refresh and access token in an httpOnly secure cookie
+     setCookie(res, "admin-refresh-token", refreshToken, 7 * 24 * 60 * 60 * 1000)
+     setCookie(res, "admin-access-token", accessToken, 15 * 60 * 1000)
+
+     res.status(200).json({
+        message: "Login successful!",
+        user: { id: user.id, email: user.email, name: user.name }
+     })
+   } catch (error) {
+    console.log("Error in the loginAdmin function, error");
+    return next(error)
+   }
+}
+
+
+export const getAdmin = async(req: any, res: Response, next: NextFunction) => {
+  try {
+    const admin = req.admin
+    res.status(200).json({
+      success: true,
+      user: admin
+    })
+  } catch (error) {
+    next(error)
+  }
 }
