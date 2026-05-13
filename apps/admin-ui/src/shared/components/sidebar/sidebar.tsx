@@ -11,7 +11,7 @@ import Logo from '@/assets/svgs/logo'
 import SidebarItem from './sidebar.item'
 import Home from '@/assets/icons/home'
 import SidebarMenu from './sidebar.menu'
-import { BellPlus, BellRing, CalendarPlus, ListOrdered, LogOut, Mail, Package, PackageSearch, Settings, SquarePlus, TicketPercent, Users } from 'lucide-react'
+import { BellPlus, BellRing, CalendarPlus, ListOrdered, LogOut, Logs, Mail, Package, PackageSearch, Settings, SquarePlus, TicketPercent, Users } from 'lucide-react'
 import Payment from '@/assets/icons/payment'
 
 const SideBarWrapper = () => {
@@ -134,17 +134,17 @@ const SideBarWrapper = () => {
 
                <SidebarMenu title="Controllers">
                   <SidebarItem
-                    isActive={activeSidebar === "/dashboard/inbox"}
-                    title="Inbox"
-                    href="/dashboard/inbox"
+                    isActive={activeSidebar === "/dashboard/loggers"}
+                    title="Loggers"
+                    href="/dashboard/loggers"
                     icon={
-                      <Mail size={20} color={getIconColor("/dashboard/inbox")} />
+                      <Logs size={20} color={getIconColor("/dashboard/inbox")} />
                     }
                   />
                   <SidebarItem
-                    isActive={activeSidebar === "/dashboard/settings"}
-                    title="Settings"
-                    href="/dashboard/settings"
+                    isActive={activeSidebar === "/dashboard/management"}
+                    title="Management"
+                    href="/dashboard/management"
                     icon={
                       <Settings size={20} color={getIconColor("/dashboard/settings")} />
                     }
@@ -155,6 +155,19 @@ const SideBarWrapper = () => {
                     href="/dashboard/notifications"
                     icon={
                       <BellRing size={24} color={getIconColor("/dashboard/settings")} />
+                    }
+                  />
+               </SidebarMenu>
+               <SidebarMenu title="Customization">
+                  <SidebarItem
+                    isActive={activeSidebar === "/dashboard/customization"}
+                    title="All Customization"
+                    href="/dashboard/customization"
+                    icon={
+                      <TicketPercent
+                        size={22}
+                        color={getIconColor("/dashboard/customization")}
+                      />
                     }
                   />
                </SidebarMenu>
