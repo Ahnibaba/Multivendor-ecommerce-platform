@@ -1,3 +1,6 @@
+"use client"
+import { usePathname } from "next/navigation";
+
 const FooterLink = ({ href = "#", children }: { href?: any, children: React.ReactNode }) => (
   <a
     href={href}
@@ -18,6 +21,9 @@ const SocialIcon = ({ label, children } : { label: string, children: React.React
 );
 
 export default function Footer() {
+  const pathname = usePathname()
+
+  if (pathname === "/inbox") return null
   return (
     <footer className="bg-gray-50 border-t border-gray-200 font-serif">
       <div className="max-w-6xl mx-auto px-6 pt-14 pb-8">

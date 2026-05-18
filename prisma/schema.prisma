@@ -373,7 +373,7 @@ model conversationGroup {
 }
 
 model participant {
-   id             String    @id   @default(auto())  @map("_id")
+   id             String    @id   @default(auto())  @map("_id")   @db.ObjectId
    conversationId String    @db.ObjectId
    userId         String?   @db.ObjectId
    sellerId       String?   @db.ObjectId
@@ -382,4 +382,17 @@ model participant {
    unreadCount    Int       @default(0)
    muted          Boolean   @default(false)
    joinedAt       DateTime  @default(now())
+}
+
+model message {
+   id              String    @id   @default(auto())  @map("_id")   @db.ObjectId
+   conversationId  String    @db.ObjectId
+   senderId        String    @db.ObjectId
+   senderType      String
+   content         String?
+   attachments     String[]
+   status          String    @default("sent")
+   createdAt       DateTime  @default(now())
+
+   @@unique([conversationId, senderId, content, createdAt])
 }

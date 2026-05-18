@@ -10,12 +10,15 @@ import { useStore } from '@/store'
 import useUser from '@/hooks/useUser'
 import useLocationTracking from '@/hooks/useLocationTracking'
 import useDeviceTracking from '@/hooks/useDeviceTracking'
+import axiosInstance from '@/utils/axiosInstance'
+import { isProtected } from '@/utils/protected'
 
 const ProductDetailsCard = ({ data, setOpen }: { data: any, setOpen: (open: boolean) => void }) => {
   const [activeImage, setActiveImage] = useState(0)
   const [isSelected, setIsSelected] = useState(data?.color?.[0] || "")
   const [isSizeSelected, setIsSizeSelected] = useState(data?.sizes?.[0] || "")
   const [quantity, setQuantity] = useState(1)
+  const [isLoading, setIsLoading] = useState(false)
 
   const addToCart = useStore((state) => state.addToCart)
   const cart = useStore((state) => state.cart)
@@ -36,6 +39,29 @@ const ProductDetailsCard = ({ data, setOpen }: { data: any, setOpen: (open: bool
   estimatedDelivery.setDate(estimatedDelivery.getDate() + 5)
 
   const router = useRouter()
+
+
+  const handleChat = async () => {
+     if (isLoading) {
+       return
+     }
+
+     setIsLoading(true)
+
+     try {
+       const res = await axiosInstance.post(
+        "/chatting/api/create-user-conversationGroup",
+        { sellerId: data?.shops?.sellerId },
+        isProtected
+      )
+      router.push(`/inbox?conversationId=${res.data.conversation.id}`)
+     } catch (error) {
+       console.log(error);
+       
+     } finally {
+       setIsLoading(false)
+     }
+  }
 
   
   return (
@@ -118,7 +144,7 @@ const ProductDetailsCard = ({ data, setOpen }: { data: any, setOpen: (open: bool
                 <button
                   className="flex cursor-pointer items-center gap-2 px-4 py-2 bg-blue-600
                   hover:bg-blue-700 text-white font-medium rounded-md hover:scale-110 transition"
-                  onClick={() => router.push(`/inbox?shopId=${data?.shops?.id}`)}
+                  onClick={() => handleChat()}
                 >
                   💬 Chat with Seller
                 </button>
