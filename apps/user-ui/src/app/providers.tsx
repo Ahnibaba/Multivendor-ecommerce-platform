@@ -32,14 +32,14 @@ const ProvidersWithWebSocket = ({
 }) => {
    const { user, isLoading } = useUser()
 
-   if (isLoading) return null
+   if (isLoading || !user) {
+      return <>{children}</>
+   }
+
    return (
-     <>
-       {user && <WebSocketProvider user={user}>
-          {children}
-        </WebSocketProvider>}
-        {!user && children}
-     </>
+      <WebSocketProvider user={user}>
+         {children}
+      </WebSocketProvider>
    )
 }
 export default Providers

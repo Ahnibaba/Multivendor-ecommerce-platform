@@ -29,7 +29,7 @@ const Page = () => {
 
    const conversationId = searchParams.get("conversationId")
 
-   const { ws, unreadCounts } = useWebSocket()
+   const { ws, unreadCounts, wsReady } = useWebSocket()
    const { data: conversations, isLoading } = useQuery({
       queryKey: ["conversations"],
       queryFn: async () => {
@@ -92,9 +92,60 @@ const Page = () => {
       }
    }, [conversationId, chats])
 
+
+
+   useEffect(() => {
+      if (!ws) return
+
+      ws.onmessage = (event: any) => {
+         const data = JSON.parse(event.data)
+
+         console.log("I am data", data);
+         
+         if (data.type === "NEW_MESSAGE") {
+            const newMsg = data?.payload
+
+            if (newMsg.conversationId === conversationId) {
+               queryClient.setQueryData(
+                  ["messages", conversationId],
+                  (old: any = []) => [
+                     ...old,
+                     {
+                        content: newMsg.messageBody || newMsg.content || "",
+                        senderType: newMsg.senderType,
+                        seen: false,
+                        createdAt: newMsg.createdAt || new Date().toISOString()
+                     }
+                  ]
+               )
+               scrollToBottom()
+            }
+
+            setChats((prevChats) =>
+               prevChats.map((chat) =>
+                  chat.conversationId === newMsg.conversationId
+                     ? { ...chat, lastMessage: newMsg.content || newMsg.messageBody }
+                     : chat
+               )
+            )
+         }
+
+         if (data.type === "UNSEEN_COUNT_UPDATE") {
+            const { conversationId: convId, count } = data.payload
+            setChats((prevChats) =>
+               prevChats.map((chat) =>
+                  chat.conversationId === convId
+                     ? { ...chat, unreadCount: count }
+                     : chat
+               )
+            )
+         }
+      }
+   }, [ws, conversationId])
+
    const handleChatSelect = (chat: any) => {
-       setHasFetchedOnce(false)
-       setChats((prev) => 
+      setHasFetchedOnce(false)
+      setChats((prev) =>
          prev.map((c) => c.conversationId === chat.conversationId ? { ...c, unreadCount: 0 } : c)
       )
       router.push(`?conversationId=${chat.conversationId}`)
@@ -110,51 +161,53 @@ const Page = () => {
    const scrollToBottom = () => {
       requestAnimationFrame(() => {
          setTimeout(() => {
-             scrollAnchorRef.current?.scrollIntoView({ behavior:"smooth" })
+            scrollAnchorRef.current?.scrollIntoView({ behavior: "smooth" })
          }, 0)
       })
    }
 
    const handleSend = async (e: any) => {
-     e.preventDefault()
-     if (!message.trim() || !selectedChat) return
+      e.preventDefault()
+      if (!message.trim() || !selectedChat) return
 
-     const payload = {
-        fromUserId: user?.id,
-        toUserId: selectedChat?.seller?.id,
-        conversationId: selectedChat?.conversationId,
-        messageBody: message,
-        senderType: "user"
-     }
+      const payload = {
+         fromUserId: user?.id,
+         toUserId: selectedChat?.seller?.id,
+         conversationId: selectedChat?.conversationId,
+         messageBody: message,
+         senderType: "user"
+      }
 
-     ws?.send(JSON.stringify(payload))
+      ws?.send(JSON.stringify(payload))
 
-     queryClient.setQueryData(
-       ["messages", selectedChat.conversationId],
-       (old: any = []) => [
-          ...old,
-          {
-             content: payload.messageBody,
-             senderType: "user",
-             seen: false,
-             createdAt: new Date().toISOString()
-          }
-       ]
-     )
+      queryClient.setQueryData(
+         ["messages", selectedChat.conversationId],
+         (old: any = []) => [
+            ...old,
+            {
+               content: payload.messageBody,
+               senderType: "user",
+               seen: false,
+               createdAt: new Date().toISOString()
+            }
+         ]
+      )
 
-     setChats((prevChats) =>
-       prevChats.map((chat) => 
-          chat.conversationId 
-            ? { ...chat, lastMessage: payload.messageBody }
-            : chat
+      setChats((prevChats) =>
+         prevChats.map((chat) =>
+            chat.conversationId
+               ? { ...chat, lastMessage: payload.messageBody }
+               : chat
          )
-   )
+      )
 
-   setMessage("")
-   scrollToBottom()
+      setMessage("")
+      scrollToBottom()
    }
 
    const getLastMessage = (chat: any) => chat?.lastMessage || ""
+
+   if (!wsReady) return
 
 
    return (
@@ -244,7 +297,7 @@ const Page = () => {
                            {hasMore && (
                               <div className="flex justify-center mb-2">
                                  <button
-                                     onClick={loadMoreMessages}
+                                    onClick={loadMoreMessages}
                                     className="text-xs px-4 py-1 bg-gray-200 hover:bg-gray-300"
                                  >
                                     Load previous messages
@@ -255,26 +308,31 @@ const Page = () => {
                            {messages?.map((msg: any, index: number) => (
                               <div key={index}>
                                  <div
-                                    
-                                    className={`flex flex-col ${msg.senderType === "user"
-                                          ? "items-end ml-auto"
-                                          : "items-start"
-                                       } max-w-[80%]`}>
-                                    {msg.text || msg.content}
+                                    className={`flex flex-col ${msg.senderType === "user" ? "items-end ml-auto" : "items-start"
+                                       } max-w-[80%]`}
+                                 >
+                                    <div
+                                       className={
+                                          msg.senderType === "user"
+                                             ? "bg-blue-600 text-white px-4 py-2 rounded-2xl rounded-tr-sm text-sm leading-relaxed"
+                                             : "bg-gray-100 text-gray-900 px-4 py-2 rounded-2xl rounded-tl-sm text-sm leading-relaxed"
+                                       }
+                                    >
+                                       {msg.text || msg.content}
+                                    </div>
                                  </div>
                                  <div
-                                   className={`text-[11px] text-gray-400 mt-1 flex items-center gap-1 ${
-                                      msg.senderType === "user"
-                                        ? "mr-1 justify-end"
-                                        : "ml-1"
-                                   }`}
-                                   >
-                                      {msg.time ||
-                                        new Date(msg.createdAt).toLocaleTimeString([], {
-                                           hour: "2-digit",
-                                           minute: "2-digit"
-                                        })
-                                      }
+                                    className={`text-[11px] text-gray-400 mt-1 flex items-center gap-1 ${msg.senderType === "user"
+                                       ? "mr-1 justify-end"
+                                       : "ml-1"
+                                       }`}
+                                 >
+                                    {msg.time ||
+                                       new Date(msg.createdAt).toLocaleTimeString([], {
+                                          hour: "2-digit",
+                                          minute: "2-digit"
+                                       })
+                                    }
                                  </div>
                               </div>
                            ))}

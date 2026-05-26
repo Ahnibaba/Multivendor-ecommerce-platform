@@ -44,10 +44,11 @@ export async function createWebSocketServer(server: HttpServer) {
 
                const isSeller = registeredUserId.startsWith("seller_")
                const redisKey = isSeller
-                  ? `online:seller:${registeredUserId.replace("seller_", "")}`
-                  : `online:user:${registeredUserId}`
+                  ? `online:seller_${registeredUserId.replace("seller_", "")}`
+                  : `online:user_${registeredUserId.replace("user_", "")}`
                await redis.set(redisKey, "1")
                await redis.expire(redisKey, 300)
+
 
             }
 
@@ -153,8 +154,8 @@ export async function createWebSocketServer(server: HttpServer) {
             console.log(`Disconnected user ${registeredUserId}`)
             const isSeller = registeredUserId.startsWith("seller_")
             const redisKey = isSeller
-               ? `online:seller:${registeredUserId.replace("seller", "")}`
-               : `online:user:${registeredUserId}`
+               ? `online:seller_${registeredUserId.replace("seller_", "")}`
+               : `online:user_${registeredUserId.replace("user_", "")}`
 
             await redis.del(redisKey)
          }
@@ -166,6 +167,6 @@ export async function createWebSocketServer(server: HttpServer) {
    })
 
    console.log("WebSocket server ready");
-   
+
 
 }
