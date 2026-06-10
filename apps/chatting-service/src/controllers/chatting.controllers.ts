@@ -122,7 +122,7 @@ export const getUserConversations = async (
                 // Check online status from Redis
                 let isOnline = false
                 if (sellerParticipant?.sellerId) {
-                    const redisKey = `online:seller:${sellerParticipant.sellerId}`
+                    const redisKey = `online:seller_${sellerParticipant.sellerId}`
                     const redisResult = await redis.get(redisKey)
                     isOnline = !!redisResult
                 }
@@ -207,8 +207,11 @@ export const getSellerConversations = async (
                 // Check online status from Redis
                 let isOnline = false
                 if (userParticipant?.userId) {
-                    const redisKey = `online:user:${userParticipant.userId}`
+                    const redisKey = `online:user_${userParticipant.userId}`
+                    console.log("Redis key", redisKey);
                     const redisResult = await redis.get(redisKey)
+                    console.log("I am Redis Result", redisResult);
+                    
                     isOnline = !!redisResult
                 }
 

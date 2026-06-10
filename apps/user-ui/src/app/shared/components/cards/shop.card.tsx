@@ -39,6 +39,7 @@ const ShopCard: React.FC<ShopCardProps> = ({ shop }) => {
                         src={
                             shop?.avatar?.[0] ||
                             "https://ik.imagekit.io/fzoxzwtey/avatar/6_N7eMmuAvl.png?updatedAt=1742269698784"
+                            // "https://ik.imagekit.io/fzoxzwtey/avatar/amazon.jpeg"
                         }
                         alt={shop.name}
                         width={64}

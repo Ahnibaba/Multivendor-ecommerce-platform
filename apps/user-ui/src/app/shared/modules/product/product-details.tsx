@@ -13,6 +13,9 @@ import useDeviceTracking from '@/hooks/useDeviceTracking'
 import useUser from '@/hooks/useUser'
 import ProductCard from '../../components/cards/product-card'
 import axiosInstance from '@/utils/axiosInstance'
+import { isProtected } from '@/utils/protected'
+import { Router } from 'next/router'
+import { useRouter } from 'next/navigation'
 
 
 const ProductDetails = ({ productDetails }: { productDetails: any }) => {
@@ -33,6 +36,9 @@ const ProductDetails = ({ productDetails }: { productDetails: any }) => {
     const [recommendedProducts, setRecommendedProducts] = useState([])
 
     const [mounted, setMounted] = useState(false)
+    const [isChatLoading, setIsChatLoading] = useState(false)
+
+    const router = useRouter()
 
     useEffect(() => {
         setMounted(true)
@@ -59,6 +65,7 @@ const ProductDetails = ({ productDetails }: { productDetails: any }) => {
     const location = useLocationTracking()
     const deviceInfo = useDeviceTracking()
 
+
     // Navigate to previous image
     const prevImage = () => {
         if (currentIndex > 0) {
@@ -75,6 +82,8 @@ const ProductDetails = ({ productDetails }: { productDetails: any }) => {
         }
     }
 
+
+    
     const containerRef = useRef<HTMLDivElement | null>(null)
 
     const diff = (productDetails?.regular_price - productDetails?.sale_price) / productDetails?.regular_price
@@ -101,6 +110,28 @@ const ProductDetails = ({ productDetails }: { productDetails: any }) => {
     useEffect(() => {
        fetchFilteredProducts()
     }, [priceRange])
+
+     const handleChat = async () => {
+         if (isChatLoading) {
+           return
+         }
+    
+         setIsChatLoading(true)
+    
+         try {
+           const res = await axiosInstance.post(
+            "/chatting/api/create-user-conversationGroup",
+            { sellerId: productDetails?.shops?.sellerId },
+            isProtected
+          )
+          router.push(`/inbox?conversationId=${res.data.conversation.id}`)
+         } catch (error) {
+           console.log(error);
+           
+         } finally {
+           setIsChatLoading(false)
+         }
+      }
 
     return (
         <div className="w-full bg-[#f5f5f5] py-5">
@@ -369,6 +400,7 @@ const ProductDetails = ({ productDetails }: { productDetails: any }) => {
                                 </div>
                                 <Link
                                     href={"#"}
+                                    onClick={() => handleChat()}
                                     className="text-blue-500 text-sm flex items-center gap-1"
                                 >
                                     <MessageSquareText />

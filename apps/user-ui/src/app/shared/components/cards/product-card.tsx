@@ -50,6 +50,9 @@ const ProductCard = ({ product, isEvent }: { product: any; isEvent?: boolean; })
     }
     return
   }, [isEvent, product?.ending_date])
+
+  console.log(product);
+  
   return (
     <div className="w-full min-h-[350px] h-max bg-white rounded-lg relative">
        {isEvent && (
@@ -81,7 +84,7 @@ const ProductCard = ({ product, isEvent }: { product: any; isEvent?: boolean; })
          />
        </Link>
        <Link
-         href={`/shop/${product?.shop?.id}`}
+         href={`/shop/${product?.shops?.id}`}
          className="block text-blue-500 text-sm font-medium my-2 px-2"
        >
          {product?.shops?.name}

@@ -49,6 +49,7 @@ export async function createWebSocketServer(server: HttpServer) {
                await redis.set(redisKey, "1")
                await redis.expire(redisKey, 300)
 
+               return
 
             }
 
@@ -83,6 +84,7 @@ export async function createWebSocketServer(server: HttpServer) {
                senderId: fromUserId,
                senderType,
                content: messageBody,
+               seen: false,
                createdAt: now
             }
 

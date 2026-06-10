@@ -246,3 +246,20 @@ export const verifyFlutterwave = async (req: any, res: Response) => {
     console.error("Error in the verifyFlutterwave function", error)
   }
 }
+
+export const getSeller = async(req: any, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params
+
+    const seller = await prisma.sellers.findUnique({
+       where: { id },
+       include: { shop: true }
+    })
+    res.status(200).json({
+      success: true,
+      seller
+    })
+  } catch (error) {
+    next(error)
+  }
+}

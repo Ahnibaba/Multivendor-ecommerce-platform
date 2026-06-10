@@ -60,20 +60,31 @@ const ChatPage = () => {
         return () => clearTimeout(timeout)
     }, [conversationId, message.length])
 
-    useEffect(() => {
-        if (conversationId && chats.length > 0) {
-            const chat = chats.find((c) => c.conversationId === conversationId)
-            setSelectedChat(chat || null)
-        }
-    }, [conversationId, chats])
+    // useEffect(() => {
+    //     if (conversationId && chats.length > 0) {
+    //         const chat = chats.find((c) => c.conversationId === conversationId)
+    //         setSelectedChat(chat || null)
+    //     }
+    // }, [conversationId, chats])
 
-
     useEffect(() => {
-        if (conversationId && chats.length > 0) {
-            const chat = chats.find((c) => c.conversationId === conversationId)
-            setSelectedChat(chat || null)
+        if (!conversationId || chats.length === 0) return
+
+        const chat = chats.find((c) => c.conversationId === conversationId)
+        if (!chat) return
+
+        setSelectedChat(chat)
+
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(
+                JSON.stringify({
+                    type: "MARK_AS_SEEN",
+                    conversationId: chat.conversationId
+                })
+            )
         }
-    }, [conversationId, chats])
+    }, [conversationId, chats, messages])
+
 
     const scrollToBottom = () => {
         requestAnimationFrame(() => {
@@ -109,7 +120,7 @@ const ChatPage = () => {
         ws.onmessage = (event: any) => {
             const data = JSON.parse(event.data)
             console.log("I am data", data);
-            
+
 
             if (data.type === "NEW_MESSAGE") {
                 const newMsg = data?.payload
@@ -214,6 +225,9 @@ const ChatPage = () => {
         scrollToBottom()
     }
 
+    console.log("SELECTED CHAT", selectedChat);
+
+
 
 
     return (
@@ -266,7 +280,7 @@ const ChatPage = () => {
                                                         {chat.lastMessage || ""} {" "}
                                                     </p>
                                                     {chat?.unreadCount > 0 && (
-                                                        <span className="ml-2 text-[10px] bg-blue-600 text-white">
+                                                        <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-[5px] ml-1.5 text-[11px] font-medium rounded-full bg-blue-600 text-white leading-none">
                                                             {chat?.unreadCount}
                                                         </span>
                                                     )}
