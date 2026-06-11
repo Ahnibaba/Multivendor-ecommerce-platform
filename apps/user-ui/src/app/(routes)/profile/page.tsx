@@ -12,6 +12,7 @@ import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import React, { useEffect, useState } from 'react'
 import "../../global.css"
+import Link from 'next/link'
 
 const Page = () => {
  
@@ -58,6 +59,22 @@ const Page = () => {
     })
   }
 
+  const { data: notifications, isLoading: notificationsLoading } = useQuery({
+     queryKey: ["notifications"],
+     queryFn: async () => {
+        const res = await axiosInstance.get("/admin/api/get-user-notifications")
+        return res.data.notifications
+     }
+  })
+
+  const markAsRead = async (notificationId: string) => {
+     await axiosInstance.post("/seller/api/mark-notification-as-read", {
+       notificationId
+     })
+  }
+
+  console.log("IAMNOTIFICATIONS", notifications);
+  
   return (
     <div className="bg-gray-50 p-6 pb-14">
       <div className="md:max-w-7xl mx-auto">
@@ -192,7 +209,36 @@ const Page = () => {
                 ) : (
                   activeTab === "Change Password" ? (
                     <ChangePassword />
-                  ): <></>
+                  ):(
+                     activeTab === "Notifications" ? (
+                       <div className="space-y-4 text-sm text-gray-700">
+                          {!notifications && notifications?.length === 0 && (
+                             <p>No Notifications available yet!</p>
+                          )}
+
+                          {!notificationsLoading && notifications?.length > 0 && (
+                             <div className="md:w-[80%] my-6 rounded-lg divide-y divide-gray-800">
+                                {notifications?.map((d: any) => (
+                                   <Link
+                                     key={d.id}
+                                     href={`${d.redirect_link}`}
+                                     className={`block px-5 py-4 transition ${
+                                       d.status !== "Unread"
+                                         ? "hover:bg-gray-800/40"
+                                         : "bg-gray-800/50 hover:bg-gray-800/70"
+                                     }`}
+                                     onClick={() => markAsRead(d.id)}
+                                   >
+                                      {}
+                                   </Link>
+                                ))}
+                             </div>
+                          )}
+                       </div>
+                     ) : (
+                       <p>Not Found</p>
+                     )
+                  )
                 )
               )
             )}

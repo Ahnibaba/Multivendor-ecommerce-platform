@@ -19,108 +19,108 @@ export const getBanks = async (req: Request, res: Response) => {
 }
 
 export const createFlutterwaveSubAccount = async (
-    req: any,
-    res: Response,
-    next: NextFunction
+  req: any,
+  res: Response,
+  next: NextFunction
 ) => {
-    try {
+  try {
 
-        const {
-            account_bank,
-            account_number,
-            business_name,
-            country,    // as to be of a standard abbrev e.g NG
-            currency,
-            split_value, // with a value of 0.15 from the front
-            business_mobile,
-            business_email,
-            business_contact,
-            business_contact_mobile,
-            split_type  //  with the value- "percentage"
-        } = req.body
+    const {
+      account_bank,
+      account_number,
+      business_name,
+      country,    // as to be of a standard abbrev e.g NG
+      currency,
+      split_value, // with a value of 0.15 from the front
+      business_mobile,
+      business_email,
+      business_contact,
+      business_contact_mobile,
+      split_type  //  with the value- "percentage"
+    } = req.body
 
-        const sellerId  = req.seller.id
-        
-        if (!sellerId) {
-           return next(new ValidationError("Seller ID is required"))
-        }
+    const sellerId = req.seller.id
 
-        const seller = await prisma.sellers.findUnique({
-           where: {
-             id: sellerId
-           },
-           include: {
-             shop: true
-           }
-        })
+    if (!sellerId) {
+      return next(new ValidationError("Seller ID is required"))
+    }
 
-        if (!seller) {
-          return next(new ValidationError("Seller is not available with this id!"))
-        }
+    const seller = await prisma.sellers.findUnique({
+      where: {
+        id: sellerId
+      },
+      include: {
+        shop: true
+      }
+    })
 
-        const options = {
-            method: "POST",
-            url: `${process.env.FLW_BASE_URL}/subaccounts`,
-            headers: {
-                Authorization: `Bearer ${process.env.FLW_PROD_SECRET_KEY}`,
-                "Content-Type": "application/json",
-                accept: "application/json"
-            },
-            data: {
-                account_bank,
-                account_number,
-                business_name,
-                country, 
-                currency,
-                split_value, 
-                business_mobile,
-                business_email,
-                business_contact,
-                business_contact_mobile,
-                split_type  
-            }
+    if (!seller) {
+      return next(new ValidationError("Seller is not available with this id!"))
+    }
+
+    const options = {
+      method: "POST",
+      url: `${process.env.FLW_BASE_URL}/subaccounts`,
+      headers: {
+        Authorization: `Bearer ${process.env.FLW_PROD_SECRET_KEY}`,
+        "Content-Type": "application/json",
+        accept: "application/json"
+      },
+      data: {
+        account_bank,
+        account_number,
+        business_name,
+        country,
+        currency,
+        split_value,
+        business_mobile,
+        business_email,
+        business_contact,
+        business_contact_mobile,
+        split_type
+      }
 
     }
 
-    
+
 
     const response = await axios.request(options)
     const subaccount_id = response.data.data.subaccount_id
-    
+
 
     const subaccount = await prisma.flutterwaveSubAccount.create({
-        data: {
-                sellerId: seller?.id!,
-                shopId: seller?.shop?.id!,
-                account_bank,
-                account_number,
-                business_name,
-                country, 
-                split_value, 
-                business_mobile,
-                business_email,
-                business_contact,
-                business_contact_mobile,
-                split_type,
-                subaccount_id,
-                currency
-            }
+      data: {
+        sellerId: seller?.id!,
+        shopId: seller?.shop?.id!,
+        account_bank,
+        account_number,
+        business_name,
+        country,
+        split_value,
+        business_mobile,
+        business_email,
+        business_contact,
+        business_contact_mobile,
+        split_type,
+        subaccount_id,
+        currency
+      }
     })
 
     await prisma.sellers.update({
-       where: { id: seller?.id },
-       data: {
-         flutterwaveId: subaccount_id
-       }
+      where: { id: seller?.id },
+      data: {
+        flutterwaveId: subaccount_id
+      }
     })
 
     res.status(200).json({ flutter: response.data, dB: subaccount })
-    
 
-   } catch (error) {
-     console.error("Error in the createFlutterwaveSubAccount function", error);
-     res.status(500).json(error)
-   } 
+
+  } catch (error) {
+    console.error("Error in the createFlutterwaveSubAccount function", error);
+    res.status(500).json(error)
+  }
 }
 
 
@@ -207,27 +207,27 @@ export const initializePayment = async (
 
 
 export const flutterWebhook = async (
-   req: any,
-   res: Response,
-   next: NextFunction
+  req: any,
+  res: Response,
+  next: NextFunction
 ) => {
   try {
-     const secretHash = process.env.FLUTTERWAVE_WEBHOOK_SECRET
-     const signature = req.headers["verif-hash"]
+    const secretHash = process.env.FLUTTERWAVE_WEBHOOK_SECRET
+    const signature = req.headers["verif-hash"]
 
-     if (!signature || signature !== secretHash) {
-       return res.status(401).json({
-         message: "Invalid webhook signature"
-       })
-     }
+    if (!signature || signature !== secretHash) {
+      return res.status(401).json({
+        message: "Invalid webhook signature"
+      })
+    }
 
-     const { event, data } = req.body
+    const { event, data } = req.body
 
-     if (event === "charge.completed") {
-       await handleChargeCompleted({ transactionId: data.id })
-     }
-     
-     return res.status(200).json({ success: true })
+    if (event === "charge.completed") {
+      await handleChargeCompleted({ transactionId: data.id })
+    }
+
+    return res.status(200).json({ success: true })
 
   } catch (error) {
     console.log("Error in the flutterWebhook Function", error);
@@ -239,22 +239,24 @@ export const verifyFlutterwave = async (req: any, res: Response) => {
   try {
     const { transactionId } = req.body
 
-   const result =  await verifyFlutterwaveTransaction(transactionId)
+    const result = await verifyFlutterwaveTransaction(transactionId)
 
-   res.status(200).json(result)
+    res.status(200).json(result)
   } catch (error) {
     console.error("Error in the verifyFlutterwave function", error)
   }
 }
 
-export const getSeller = async(req: any, res: Response, next: NextFunction) => {
+export const getSeller = async (req: any, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params
 
     const seller = await prisma.sellers.findUnique({
-       where: { id },
-       include: { shop: true }
+      where: { id },
+      include: { shop: true }
     })
+
+
     res.status(200).json({
       success: true,
       seller
@@ -263,3 +265,164 @@ export const getSeller = async(req: any, res: Response, next: NextFunction) => {
     next(error)
   }
 }
+
+
+export const getSellerProducts = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params
+
+    const products = await prisma.products.findMany({
+      where: {
+        shopId: id,
+        starting_date: null,
+        ending_date: null
+      },
+      include: { images: true }
+    })
+
+    res.status(200).json({
+      success: true,
+      products
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+export const getSellerEvents = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params
+
+    const products = await prisma.products.findMany({
+      where: {
+        shopId: id,
+        starting_date: { not: null },
+        ending_date: { not: null }
+      },
+      include: { images: true }
+    })
+
+    res.status(200).json({
+      success: true,
+      products
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const getShopFollowers = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params // shopId
+
+    const followers = await prisma.shopFollower.findMany({
+      where: { shopId: id },
+      include: { user: true }
+    })
+
+    res.status(200).json({
+      success: true,
+      followersCount: followers.length,
+      followers
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+
+export const followShop = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const { shopId } = req.body
+
+    await prisma.shopFollower.create({
+      data: {
+        shopId,
+        userId: req.user.id
+      }
+    })
+
+    res.status(200).json({
+      success: true,
+      message: "Shop followed successfully"
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const unfollowShop = async (req: any, res: Response, next: NextFunction) => {
+  try {
+    const { shopId } = req.body
+
+    await prisma.shopFollower.delete({
+      where: {
+        shopId_userId: {
+          shopId,
+          userId: req.user.id
+        }
+      }
+    })
+
+    res.status(200).json({
+      success: true,
+      message: "Shop unfollowed successfully"
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+
+// fetching notifications for sellers
+export const sellerNotifications = async (
+  req: any,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const sellerId = req.seller.id
+
+    const notifications = await prisma.notifications.findMany({
+      where: {
+        receiverId: sellerId
+      },
+      orderBy: {
+        createdAt: "desc"
+      }
+    })
+
+    res.status(200).json({
+      success: true,
+      notifications
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const markNotificationAsRead = async (
+   req: any,
+   res: Response,
+   next: NextFunction
+) => {
+  try {
+     const { notificationId } = req.body
+
+     if (!notificationId) {
+       return next(new ValidationError("Notification id id required!"))
+     }
+
+     const notification = await prisma.notifications.update({
+        where: { id: notificationId },
+        data: { status: "Read" }
+     })
+
+     res.status(200).json({
+        success: true,
+        notification
+     })
+  } catch (error) {
+    
+  }
+}
+

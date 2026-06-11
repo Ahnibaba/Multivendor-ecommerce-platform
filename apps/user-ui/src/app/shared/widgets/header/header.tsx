@@ -9,12 +9,15 @@ import HeaderBottom from './header-bottom'
 import useUser from '@/hooks/useUser'
 import axiosInstance from '@/utils/axiosInstance'
 import { useStore } from '@/store'
+import useLayout from '@/hooks/useLayout'
 
 const Header = () => {
   const { user, isLoading } = useUser()
+  const  { layout } = useLayout()
 
   const wishlist = useStore((state) => state.wishlist)
   const cart = useStore((state) => state.cart)
+
 
   const [searchQuery, setSearchQuery] = useState("")
   const [suggestions, setSuggestions] = useState<any[]>([])
@@ -40,7 +43,7 @@ const Header = () => {
       <div className="w-[80%] py-5 m-auto flex items-center justify-between">
         <div className="">
           <Link href={"/"}>
-            <span className='text-2xl font-[500]'>Eshop</span>
+            <span className='text-2xl font-[500]'>Estore</span>
           </Link>
         </div>
         <div className="w-[50%] relative">

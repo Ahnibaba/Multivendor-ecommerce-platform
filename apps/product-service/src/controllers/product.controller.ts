@@ -445,10 +445,14 @@ export const getAllProduct = async (req: Request, res: Response, next: NextFunct
     // })
     console.log("Products", products);
 
+    const sellers = await prisma.sellers.findMany()
+    const shops = await prisma.shops.findMany()
 
 
     res.status(200).json({
       products,
+      sellers,
+      shops
       //  top10By: type === "latest" ? "latest" : "topSales",
       //  top10Products,
       //  total,
@@ -882,3 +886,4 @@ export const topShops = async (
     
    }
 }
+

@@ -121,7 +121,7 @@ model discount_codes {
   discountCode        String   @unique
   discountType        String
   discountValue       Float?
-  discountedProductId String
+  discountedProductId String?
   sellerId            String   @db.ObjectId
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
@@ -345,6 +345,7 @@ model notifications {
   receiverId    String           @db.ObjectId // 👈 seller who receives it
   redirect_link String?
   isRead        Boolean          @default(false)
+  status        String?        
   type          NotificationType @default(GENERAL)
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt

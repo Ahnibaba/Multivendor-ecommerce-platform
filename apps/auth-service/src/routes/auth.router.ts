@@ -1,5 +1,5 @@
 import express, { Router } from "express"
-import { addUserAddress, createShop, deleteUserAddress, getAdmin, getSeller, getUser, getUserAddresses, loginAdmin, loginSeller, loginUser, logoutUser, refreshToken, registerSeller, resetUserPassword, updateUserPassword, userForgotPassword, userRegistration, verifySeller, verifyUser, verifyUserForgotPassword } from "../controllers/auth.controller"
+import { addUserAddress, createShop, deleteUserAddress, getAdmin, getLayoutData, getSeller, getUser, getUserAddresses, loginAdmin, loginSeller, loginUser, logoutUser, refreshToken, registerSeller, resetUserPassword, updateUserPassword, userForgotPassword, userRegistration, verifySeller, verifyUser, verifyUserForgotPassword } from "../controllers/auth.controller"
 import isAuthenticated from "../../../../packages/middleware/isAuthenticated"
 import { isAdmin, isSeller } from "../../../../packages/middleware/authorizeRoles"
 
@@ -28,6 +28,6 @@ router.post("/change-password", isAuthenticated, updateUserPassword)
 router.get("/add-address", isAuthenticated, addUserAddress)
 router.delete("/delete-address/:addressId", isAuthenticated, deleteUserAddress)
 
-
+router.get("/get-layots", getLayoutData)
 
 export default router

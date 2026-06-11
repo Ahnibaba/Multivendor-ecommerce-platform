@@ -64,6 +64,7 @@ const ProductDetailsCard = ({ data, setOpen }: { data: any, setOpen: (open: bool
   }
 
   
+  
   return (
     <div
       className="fixed flex items-center justify-center top-0 left-0 h-screen w-full bg-[#0000001d] z-50"

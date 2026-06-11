@@ -2,6 +2,7 @@
 import express from 'express';
 import WebSocket from "ws"
 import http from "http"
+import { consumeKafkaMessages } from './logger-consumer';
 
 const app = express();
 

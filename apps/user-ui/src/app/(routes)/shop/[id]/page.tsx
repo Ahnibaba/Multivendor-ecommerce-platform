@@ -1,20 +1,11 @@
 import SellerProfile from '@/app/shared/modules/seller/seller-profile'
 import { Metadata } from 'next'
 
+import axiosInstance from "@/utils/axiosInstance"
+
 async function fetchSellerDetails(id: string) {
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_SERVER_URI}/seller/api/get-seller/${id}`,
-    {
-      cache: 'no-store',
-      headers: {
-        'Content-Type': 'application/json',
-      }
-    }
-  )
-
-  if (!res.ok) throw new Error(`Failed to fetch seller: ${res.status}`)
-
-  return res.json()
+  const res = await axiosInstance.get(`/seller/api/get-seller/${id}`)
+  return res.data
 }
 
 export async function generateMetadata({
@@ -55,7 +46,10 @@ const Page = async ({ params }: { params: Promise<{ id: string }> }) => {
   const { id } = await params
   const data = await fetchSellerDetails(id)
 
-  const shop = data?.shop ?? null
+  console.log("SELLERSDATA", data);
+  
+
+  const shop = data?.seller.shop ?? null
   const followersCount: number = data?.followersCount ?? 0
 
   return (

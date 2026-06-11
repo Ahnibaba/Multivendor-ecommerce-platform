@@ -124,6 +124,7 @@ export const loginUser = async(req: Request, res: Response, next: NextFunction) 
     })
   } catch (error) {
     return next(error)
+    console.log("Error from loginUser", error);
   }
 }
 
@@ -185,6 +186,13 @@ export const refreshToken = async (req: any, res: Response, next: NextFunction) 
  export const getUser = async (req: any, res: Response, next: NextFunction) => {
    try {
     const user = req.user
+
+    await sendLog({
+      type: "success",
+      message: `User data retrieved ${user?.email}`,
+      source: "auth-service"
+    })
+
     res.status(201).json({ success: true, user })
 
    } catch (error) {
@@ -774,3 +782,22 @@ export const getAdmin = async(req: any, res: Response, next: NextFunction) => {
     next(error)
   }
 }
+
+//fetch layout data
+export const getLayoutData = async (
+   req: Request,
+   res: Response,
+   next: NextFunction
+) => {
+   try {
+     const layout = await prisma.site_config.findFirst()
+
+     res.status(200).json({
+       success: true,
+       layout
+     })
+   } catch (error) {
+     next(error)
+   }
+}
+

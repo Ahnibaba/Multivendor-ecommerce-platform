@@ -62,11 +62,14 @@ const SellerProfile = ({
         fetchFollowStatus()
     }, [shop?.id])
 
+
+    console.log("Seller profile data", shop);
+    
     const { data: events, isLoading: isEventLoading } = useQuery({
         queryKey: ["seller-events"],
         queryFn: async () => {
             const res = await axiosInstance.get(
-                `/seller/api/get-seller-events/${shop?.id}?pave=1&limit=10`
+                `/seller/api/get-seller-events/${shop?.id}?page=1&limit=10`
             )
             return res.data.products
         },
@@ -80,7 +83,7 @@ const SellerProfile = ({
                     shopId: shop?.id
                 })
             } else {
-                await axiosInstance.post("/seller/api/ffollow-shop", {
+                await axiosInstance.post("/seller/api/follow-shop", {
                     shopId: shop?.id,
                 })
             }
@@ -116,6 +119,9 @@ const SellerProfile = ({
       }
     }, [location, deviceInfo, isLoading])
 
+    console.log("IAMEVENT", events);
+    
+
     return (
        <div>
           <div className="relative w-full flex justify-center">
@@ -138,7 +144,7 @@ const SellerProfile = ({
                     <div className="relative w-[100px] h-[100px] rounded-full border-4 border-slate-300 overflow-hidden">
                         <Image
                           src={
-                             shop?.avatar || 
+                             shop?.avatar[0] || 
                              "https://ik.imagekit.io/fz0xzwtey/avatar/amazon.jpeg"
                           }
                           alt="Seller Avatar"
@@ -258,6 +264,30 @@ const SellerProfile = ({
                               ))}
                             </>
                         )}
+                        {products?.map((product: any) => (
+                            <ProductCard
+                              isEvent={false}
+                              key={product.id}
+                              product={product}
+                            />
+                        ))}
+                        {products?.length === 0 && (
+                           <p className="py-2">No offers available</p>
+                        )}
+                    </div>
+                 )}
+                 {activeTab === "Offers" && (
+                    <div className="m-auto grid grid-cols-1 p-4 sm:grid-cols-3 md:grid-cols-4">
+                        {isEventLoading && (
+                            <>
+                              {Array.from({ length: 10 }).map((_, index) => (
+                                 <div
+                                   key={index}
+                                   className="h-[250px] bg-gray-300 animate-pulse rounded-xl"
+                                  ></div>
+                              ))}
+                            </>
+                        )}
                         {events?.map((product: any) => (
                             <ProductCard
                               isEvent={true}
@@ -265,7 +295,7 @@ const SellerProfile = ({
                               product={product}
                             />
                         ))}
-                        {products?.length === 0 && (
+                        {events?.length === 0 && (
                            <p className="py-2">No offers available</p>
                         )}
                     </div>

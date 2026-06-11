@@ -13,7 +13,7 @@ import initializeSiteConfig from './libs/initializeSiteConfig';
 const app = express();
 
 app.use(cors({
-  origin: ["http://localhost:3000", "http://localhost:3001"],
+  origin: ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002"],
   allowedHeaders: ["Authorization", "Content-Type"],
   credentials: true
 }))
